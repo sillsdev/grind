@@ -1,0 +1,129 @@
+/*  
+The MIT License (MIT)
+
+Copyright (c) 2013 SIL International
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+*/
+
+#pragma once
+
+// Language headers
+#include <list>
+// Interface headers
+#include <IParagraphComposer.h>
+// Library headers
+#include <PMRect.h>
+#include <PMReal.h>
+// Module header
+
+// Forward declarations
+class PMReal;
+// InDesign interfaces
+class IComposeScanner;
+class IDrawingStyle;
+class IWaxLine;
+// Graphite forward delcarations
+
+namespace nrsc 
+{
+// Project forward declarations
+class	box;
+struct	line_metrics;
+class	run;
+class   tiler;
+
+class tile : private std::list<run*>
+{
+	typedef std::list<run*>	base_t;
+
+	PMRect	_region;
+
+	// disable the assignment operator.
+	tile(const tile & rhs);
+	tile & operator = (const tile &);
+
+
+	static run * create_run(IDrawingStyle * ds, PMReal & x, TextIterator & ti, TextIndex span);
+
+public:
+	tile(const PMRect & region=PMRect());
+	virtual ~tile() throw();
+
+	// Member types
+	using base_t::const_iterator;
+	using base_t::iterator;
+	using base_t::difference_type;
+	using base_t::size_type;
+
+	//Iterators
+	using base_t::begin;
+	using base_t::end;
+
+	// Capacity
+	using base_t::empty;
+	using base_t::size;
+	size_t	span() const;
+
+	// Geometry
+	PMPoint     position() const;
+	PMPoint     content_dimensions() const;
+	PMPoint	    dimensions() const;
+
+	// Element access
+	using base_t::front;
+	using base_t::back;
+
+	// Modifiers
+	using base_t::push_front;
+	using base_t::push_back;
+	void	clear();
+	bool	fill_by_span(IComposeScanner & scanner, TextIndex offset, TextIndex span=0);
+
+	// Operations
+	void	justify();
+	void	break_into(tile &);
+	void	update_line_metrics(line_metrics &) const;
+};
+
+
+inline
+tile::tile(const PMRect & region)
+: _region(region)
+{
+}
+
+inline
+PMPoint tile::position() const
+{
+	return _region.LeftTop();
+}
+
+inline
+PMPoint	tile::dimensions() const
+{
+	return _region.Dimensions();
+}
+
+
+IWaxLine * compose_line(tiler &, IParagraphComposer::RecomposeHelper &, TextIndex ti);
+
+bool rebuild_line(const IParagraphComposer::RebuildHelper &);
+
+} // end of namespace nrsc
