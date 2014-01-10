@@ -1,12 +1,12 @@
 The source code in this project consists of 2 major and separately licnesed 
-parts, the Paragraph Composer plugin and the Graphite 2 engine library.
+parts, the ParagraphComposer plug-in and the Graphite2 engine library.
 
 The Graphite2 engine code is stored in the graphite sub-directory and licensed 
 according to the LICENSE file found there (LGPLv2 or MPL at your choice). 
 It is built as part of the plug-in build process but is staticaly linked into 
-to Paragraph Composer code.
+to ParagraphComposer code.
 
-All Paragraph Composer plug-in code in this project is licensed under the 
+All ParagraphComposer plug-in code in this project is licensed under the 
 MIT License as follows and reproduced at the top of each source file. 
 
 
