@@ -214,7 +214,7 @@ bool run::render_run(IWaxGlyphs & glyphs) const
 
 	//Assemble glyphs
 	PMRealGlyphPoint * g = glyph_points;
-	for (const_iterator cl_i = begin(); cl_i != end(); cluster_x += cl->width(), ++cl_i)
+	for (const_iterator cl_i = begin(); cl_i != end(); cluster_x += cl->width() + cl->back().kern(), ++cl_i)
 	{
 		cl = *cl_i;
 		for (cluster::const_iterator c = cl->begin(); c != cl->end(); ++c, ++g)

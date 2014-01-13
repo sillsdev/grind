@@ -52,7 +52,7 @@ bool fallback_run::layout_span(TextIterator ti, size_t span)
 	if (font == nil)
 		return false;
 
-	const PMReal = min_width = _drawing_style->GetEmSpaceWidth(false)/48.0;
+	const PMReal min_width = _drawing_style->GetEmSpaceWidth(false)/48.0;
 	WideString	chars;
 	ti.AppendToStringAndIncrement(&chars, span);
 
@@ -64,7 +64,8 @@ bool fallback_run::layout_span(TextIterator ti, size_t span)
 	PMRealGlyphPoint * gp = gps;
 
 	// Add the glyphs with their natural widths
-	for (WideString::const_iterator c = chars.begin(); c != chars.end(); ++c)
+	float total_kern = 0;
+	for (WideString::const_iterator c = chars.begin(); c != chars.end(); ++c, ++gp)
 	{
 		const int gid = gp->GetGlyphID();
 		
@@ -73,17 +74,15 @@ bool fallback_run::layout_span(TextIterator ti, size_t span)
 		else
 		{
 			PMReal glyph_width = font->GetGlyphWidth(gid);
-			add_letter(gid, glyph_width, glyph_width < min_width);
+			add_letter(gid, glyph_width, cluster::breakweight::letter, glyph_width < min_width);
 		}
 
-		// Calculate the kerning.
-		glyf * last_glyf = back()->back();
-		float current_x = gp->GetXPosition();
-		if (++gps != gps_end)
-			last_glyf->kern() += (gp->GetXPosition() - current_x) - last_glyf->width();
+		// Set the kerning.
+		back()->back().kern() = gp->GetXPosition() - total_kern;
+		total_kern = gp->GetXPosition();
 	}
 
-	delete glyphs;
+	delete gps;
 
 	return true;
 }
