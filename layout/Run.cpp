@@ -164,12 +164,18 @@ void run::add_glue(glyf::justification_t level, PMReal width, cluster::breakweig
 
 void run::add_letter(int glyph_id, PMReal width, cluster::breakweight::type bw, bool to_cluster)
 {
-	cluster * cl = to_cluster && !empty() ? back() : new cluster();
+	cluster * cl = 0;
+	if (to_cluster && !empty())
+		cl = back();
+	else
+	{
+		cl = new cluster();
+		push_back(cl);
+	}
 
 	cl->add_glyf(glyf(glyph_id, glyf::letter, width, _height, 0));
 	cl->add_chars();
 	cl->break_weight() = bw;
-	push_back(cl);
 }
 
 

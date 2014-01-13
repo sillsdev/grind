@@ -52,6 +52,7 @@ bool fallback_run::layout_span(TextIterator ti, size_t span)
 	if (font == nil)
 		return false;
 
+	const PMReal = min_width = _drawing_style->GetEmSpaceWidth(false)/48.0;
 	WideString	chars;
 	ti.AppendToStringAndIncrement(&chars, span);
 
@@ -70,7 +71,11 @@ bool fallback_run::layout_span(TextIterator ti, size_t span)
 		if (u_isspace(*c))
 			add_glue(glyf::space, _drawing_style->GetSpaceWidth(), u_isWhitespace(*c) ? cluster::breakweight::whitespace : cluster::breakweight::never);
 		else
-			add_letter(gid, font->GetGlyphWidth(gid));
+		{
+			PMReal glyph_width = font->GetGlyphWidth(gid);
+			add_letter(gid, glyph_width, glyph_width < min_width);
+		}
+
 		// Calculate the kerning.
 		glyf * last_glyf = back()->back();
 		float current_x = gp->GetXPosition();
