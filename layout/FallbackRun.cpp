@@ -56,18 +56,29 @@ bool fallback_run::layout_span(TextIterator ti, size_t span)
 	ti.AppendToStringAndIncrement(&chars, span);
 
 	// Make a segment
-	PMRealGlyphPoint * glyphs = new PMRealGlyphPoint[span];
-	font->FillOutGlyphIDs(glyphs, span, chars.GrabUTF16Buffer(0), chars.NumUTF16TextChars());
-	font->GetKerns(glyphs, span);
-	PMRealGlyphPoint * g = glyphs;
-	for (WideString::const_iterator c = chars.begin(); c != chars.end(); ++g, ++c)
+	PMRealGlyphPoint * gps = new PMRealGlyphPoint[span],
+		             * gps_end = gps + span;
+	font->FillOutGlyphIDs(gps, span, chars.GrabUTF16Buffer(0), chars.NumUTF16TextChars());
+	font->GetKerns(gps, span);
+	PMRealGlyphPoint * gp = gps;
+
+	// Add the glyphs with their natural widths
+	for (WideString::const_iterator c = chars.begin(); c != chars.end(); ++c)
 	{
-		const int gid = g->GetGlyphID();
+		const int gid = gp->GetGlyphID();
+		
 		if (u_isspace(*c))
 			add_glue(glyf::space, _drawing_style->GetSpaceWidth(), u_isWhitespace(*c) ? cluster::breakweight::whitespace : cluster::breakweight::never);
 		else
 			add_letter(gid, font->GetGlyphWidth(gid));
+		// Calculate the kerning.
+		glyf * last_glyf = back()->back();
+		float current_x = gp->GetXPosition();
+		if (++gps != gps_end)
+			last_glyf->kern() += (gp->GetXPosition() - current_x) - last_glyf->width();
 	}
+
+	delete glyphs;
 
 	return true;
 }
