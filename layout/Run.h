@@ -54,6 +54,7 @@ class run : protected std::list<cluster*>
 	run & operator = (const run &);
 
 	void run::layout_span_with_spacing(TextIterator &, const TextIterator &, PMReal, glyf::justification_t);
+	size_t num_glyphs() const;
 
 public:
 	typedef struct { PMReal min, max; }	stretch[5];

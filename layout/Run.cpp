@@ -55,6 +55,15 @@ run::run(IDrawingStyle * ds)
 {
 }
 
+inline
+size_t run::num_glyphs() const
+{
+	size_t n = 0;
+	for (const_iterator cl_i = begin(); cl_i != end(); ++cl_i)
+		n += (*cl_i)->size();
+
+	return n;
+}
 
 bool run::fill(TextIterator & ti, TextIndex span)
 {
@@ -206,7 +215,7 @@ run & run::join(run & rhs)
 
 bool run::render_run(IWaxGlyphs & glyphs) const
 {
-	PMRealGlyphPoint	glyph_points[64];
+	PMRealGlyphPoint  * glyph_points = new PMRealGlyphPoint[num_glyphs()];
 	TextIndex			i = 0;
 	int					gi = 0;
 	PMReal				cluster_x = 0.0;
@@ -235,26 +244,7 @@ bool run::render_run(IWaxGlyphs & glyphs) const
 		}
 	}
 
-	//for (const_iterator cl = begin(); cl != end(); gi += (*cl)->size(), ++cl)
-	//{
-	//	cluster	  * clust = *cl;
-	//	size_t		clust_size = clust->size();
-	//	PMRealGlyphPoint * g = glyph_points;
-
-	//	for (cluster::const_iterator c = clust->begin(), c_e = clust->end();
-	//		 c != c_e; ++c, ++g)
-	//	{
-	//		g->Set(c->id(), ToFloat(cluster_x + c->pos().X()), ToFloat(cluster_x + c->pos().Y()));
-	//	}
-	//	glyphs.AddGlyphs(glyph_points, clust_size);
-	//	const PMReal cluster_advance = clust->width() + clust->back().kern();
-	//	glyphs.AddMappingWidth(cluster_advance); //TODO: refine this if needs be.
-	//	cluster_x += cluster_advance;
-
-	//	for (int n = clust->span(); n; --n, ++i)
-	//		glyphs.AddMappingRange(i, gi, clust_size);
-	//}
-
+	delete glyph_points;
 	return true;
 }
 
