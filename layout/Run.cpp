@@ -95,7 +95,7 @@ bool run::fill(TextIterator & ti, TextIndex span)
 			case kTextChar_Table:				
 			case kTextChar_TableContinued:
 			case kTextChar_ObjectReplacementCharacter:	
-				layout_span(start, start - ti);
+				layout_span(start, ti - start);
 				back()->break_weight() = cluster::breakweight::whitespace;
 				return true; 
 				break;
@@ -138,7 +138,6 @@ bool run::fill(TextIterator & ti, TextIndex span)
 	}
 
 	if (start != ti)
-		layout_span(start, _span - ti.Position());
 		layout_span(start, ti - start);
 
 	return true;
