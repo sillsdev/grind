@@ -30,6 +30,7 @@ THE SOFTWARE.
 #include <IFontInstance.h>
 #include <IJustificationStyle.h>
 #include <IWaxGlyphs.h>
+#include <IWaxGlyphsME.h>
 #include <IWaxRenderData.h>
 #include <IWaxRun.h>
 // Library headers
@@ -138,6 +139,7 @@ bool run::fill(TextIterator & ti, TextIndex span)
 
 	if (start != ti)
 		layout_span(start, _span - ti.Position());
+		layout_span(start, ti - start);
 
 	return true;
 }
@@ -215,36 +217,54 @@ run & run::join(run & rhs)
 
 bool run::render_run(IWaxGlyphs & glyphs) const
 {
-	PMRealGlyphPoint  * glyph_points = new PMRealGlyphPoint[num_glyphs()];
-	TextIndex			i = 0;
-	int					gi = 0;
-	PMReal				cluster_x = 0.0;
-	cluster			  * cl = 0;
+	const size_t num = num_glyphs();
+	float * x_offs = new float[num],
+		  * y_offs = new float[num],
+		  * widths = new float[num];
 
 	//Assemble glyphs
-	PMRealGlyphPoint * g = glyph_points;
-	for (const_iterator cl_i = begin(); cl_i != end(); cluster_x += cl->width() + cl->back().kern(), ++cl_i)
+	float * xo = x_offs,
+		  * yo = y_offs,
+		  * w  = widths;
+	for (const_iterator cl_i = begin(); cl_i != end(); ++cl_i)
 	{
-		cl = *cl_i;
-		for (cluster::const_iterator c = cl->begin(); c != cl->end(); ++c, ++g)
-			g->Set(c->id(), ToFloat(cluster_x + c->pos().X()), ToFloat(c->pos().Y()));
-	}
-	glyphs.AddGlyphs(glyph_points, g - glyph_points);
-
-	for (const_iterator cl_i = begin(); cl_i != end(); gi += cl->size(), ++cl_i)
-	{
-		cl = *cl_i;
-		const PMReal cluster_advance = cl->width() + cl->back().kern();
-		glyphs.AddMappingWidth(cluster_advance);
-		glyphs.AddMappingRange(i++, gi, cl->size());
-		for (unsigned char n = cl->span()-1; n; --n, ++i)
+		cluster & cl = **cl_i;
+		for (cluster::const_iterator c = cl.begin(); c != cl.end(); ++c, ++w, ++xo, ++yo)
 		{
-			glyphs.AddMappingWidth(0);
-			glyphs.AddMappingRange(i, gi, cl->size());
+			*w = 0;
+			*xo = ToFloat(c->pos().X());
+			*yo = ToFloat(c->pos().Y());
+			glyphs.AddGlyph(c->id(), ToFloat(c->advance()));
 		}
 	}
 
-	delete glyph_points;
+	// Position diacritics
+	InterfacePtr<IWaxGlyphsME> glyphs_me(&glyphs, IID_IWAXGLYPHSME);
+	if (glyphs_me != nil)
+		glyphs_me->AddGlyphMEData(num, x_offs, y_offs, widths);
+
+	// Do the mappings
+	int	i  = 0, 
+		gi = 0;
+	for (const_iterator cl_i = begin(); cl_i != end(); ++cl_i)
+	{
+		const cluster & cl = **cl_i;
+		const PMReal	cluster_advance = cl.width() + cl.back().kern();
+		
+		glyphs.AddMappingWidth(cluster_advance);
+		glyphs.AddMappingRange(i++, gi, cl.size());
+		for (unsigned char n = cl.span()-1; n; --n, ++i)
+		{
+			glyphs.AddMappingWidth(0);
+			glyphs.AddMappingRange(i, gi, cl.size());
+		}
+		gi += cl.size();
+	}
+
+	delete x_offs;
+	delete y_offs;
+	delete widths;
+
 	return true;
 }
 
