@@ -57,15 +57,15 @@ bool fallback_run::layout_span(TextIterator ti, size_t span)
 	ti.AppendToStringAndIncrement(&chars, span);
 
 	// Make a segment
-	PMRealGlyphPoint * gps = new PMRealGlyphPoint[span],
-		             * gps_end = gps + span;
+	PMRealGlyphPoint * gps = new PMRealGlyphPoint[span+1];
 	font->FillOutGlyphIDs(gps, span, chars.GrabUTF16Buffer(0), chars.NumUTF16TextChars());
 	font->GetKerns(gps, span);
+	gps[span] = gps[span-1]; // Copy the last glyph point so the kerning value is correctly calculated
 	PMRealGlyphPoint * gp = gps;
 
 	// Add the glyphs with their natural widths
-	float total_kern = 0;
-	for (WideString::const_iterator c = chars.begin(); c != chars.end(); ++c, ++gp)
+	float total_kern = gps[0].GetXPosition();
+	for (WideString::const_iterator c = chars.begin(); c != chars.end(); ++c)
 	{
 		const int gid = gp->GetGlyphID();
 		
@@ -78,9 +78,11 @@ bool fallback_run::layout_span(TextIterator ti, size_t span)
 		}
 
 		// Set the kerning.
-		back()->back().kern() = gp->GetXPosition() - total_kern;
+		back()->back().kern() = (++gp)->GetXPosition() - total_kern;
 		total_kern = gp->GetXPosition();
 	}
+	// Copy the kerning info.
+
 
 	delete gps;
 
