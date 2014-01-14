@@ -82,7 +82,7 @@ bool run::fill(TextIterator & ti, TextIndex span)
 			case kTextChar_BreakRunInStyle:
 			case kTextChar_CR:
 			case kTextChar_SoftCR:
-				layout_span(start, ti - start);
+				layout_span_with_spacing(start, ti, _drawing_style->GetSpaceWidth(), glyf::fill);
 				back()->break_weight() = cluster::breakweight::mandatory;
 				++ti; ++_span;
 				return true; 
