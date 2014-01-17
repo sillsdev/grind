@@ -69,7 +69,7 @@ size_t run::num_glyphs() const
 bool run::fill(TextIterator & ti, TextIndex span)
 {
 	InterfacePtr<IFontInstance>		font = _drawing_style->QueryFontInstance(kFalse);
-	InterfacePtr<ICompositionStyle> comp_style(_drawing_style, IID_ICOMPOSITIONSTYLE);
+	InterfacePtr<ICompositionStyle> comp_style(_drawing_style, UseDefaultIID());
 	const PMReal em_space_width = _drawing_style->GetEmSpaceWidth(false);
 	if (font == nil || comp_style == nil)
 		return false;
@@ -280,8 +280,8 @@ IWaxRun * run::wax_run() const
 	wr->SetYPosition(_drawing_style->GetEffectiveBaseline());
 
 	// Fill out the render data for the run from the drawing style.
-	InterfacePtr<IWaxRenderData> rd(wr, IID_IWAXRENDERDATA);
-	InterfacePtr<IWaxGlyphs>     glyphs(wr, IID_IWAXGLYPHS);
+	InterfacePtr<IWaxRenderData> rd(wr, UseDefaultIID());
+	InterfacePtr<IWaxGlyphs>     glyphs(wr, UseDefaultIID());
 	if (rd == nil || glyphs == nil)	return nil;
 	_drawing_style->FillOutRenderData(rd, kFalse/*horizontal*/);
 	_drawing_style->AddAdornments(wr);

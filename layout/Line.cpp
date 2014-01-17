@@ -67,7 +67,7 @@ bool tile::fill_by_span(IComposeScanner & scanner, TextIndex offset, TextIndex s
 	PMReal		x = _region.Left();
 
 	// If no span is specified then fill until we hit an EOL
-	if (span == 0)	span = scanner.FindSurroundingParagraph(offset).End();
+	if (span == 0)	span = scanner.FindSurroundingParagraph(offset, kFalse).End() - offset;
 
 	do
 	{
@@ -192,26 +192,25 @@ run * tile::create_run(IDrawingStyle * ds, PMReal & x, TextIterator & ti, TextIn
 	{
 	case kTextChar_ObjectReplacementCharacter:
 		r = new inline_object(ds);
+		if (!r)	return nil;
+
 		r->fill(ti, span);
 		break;
 
 	default:
-		if (font == nil)	return nil;
-
 		switch(font->GetFontType())
 		{
-		case IPMFont::kOpenTypeCFFFontType:
 		case IPMFont::kOpenTypeTTFontType:
+		case IPMFont::kTrueTypeFontType:
 			r = new fallback_run(ds);
-			r->fill(ti, span);
-			if (r && r->span() > 0)	break;
+			if (r && r->fill(ti, span)) break;
 			delete r;
+
 		default:
 			r = new fallback_run(ds);
-			r->fill(ti, span);
+			if (r)	r->fill(ti, span);
 			break;
 		}
-		
 		break;
 	}
 
@@ -317,7 +316,7 @@ IWaxLine * nrsc::compose_line(tiler & tile_manager, IParagraphComposer::Recompos
 
 
 	// TODO: Investigate use of QueryNewWaxline() instead.
-	IWaxLine* wl = ::CreateObject2<IWaxLine>(kWaxLineBoss);
+	IWaxLine* wl = helper.QueryNewWaxLine(); //::CreateObject2<IWaxLine>(kWaxLineBoss);
 	if (wl == nil)		return nil;
 
 	// Set the number of tiles on the line and whether to allow shuffling
@@ -348,7 +347,7 @@ bool nrsc::rebuild_line(const IParagraphComposer::RebuildHelper & helper)
 	PMReal const	y_bottom = wl->GetYPosition(),
 					y_top = y_bottom - wl->GetYAdvance();
 
-	// Rebuild the tile list from the wax line.
+	// Rebuild the and refill tile list from the wax line.
 	line_t	line;
 	int tile_span = 0;
 	for (int i=0, n_tiles = wl->GetNumberOfTiles(); i != n_tiles; ++i, ti += tile_span)
