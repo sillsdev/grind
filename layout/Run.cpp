@@ -149,7 +149,8 @@ void run::layout_span_with_spacing(TextIterator & first, const TextIterator & la
 {
 	layout_span(first, last - first);
 	add_glue(level, width);
-	first++ = last;
+	first = last;
+	++first;
 }
 
 
@@ -260,9 +261,9 @@ bool run::render_run(IWaxGlyphs & glyphs) const
 		gi += cl.size();
 	}
 
-	delete x_offs;
-	delete y_offs;
-	delete widths;
+	delete [] x_offs;
+	delete [] y_offs;
+	delete [] widths;
 
 	return true;
 }

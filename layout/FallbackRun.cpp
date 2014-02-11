@@ -84,7 +84,7 @@ bool fallback_run::layout_span(TextIterator ti, size_t span)
 	// Copy the kerning info.
 
 
-	delete gps;
+	delete [] gps;
 
 	return true;
 }
