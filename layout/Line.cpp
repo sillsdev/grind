@@ -181,7 +181,7 @@ void tile::justify()
 run * tile::create_run(IDrawingStyle * ds, PMReal & x, TextIterator & ti, TextIndex span)
 {
 	InterfacePtr<IPMFont>			font = ds->QueryFont();
-	InterfacePtr<ICompositionStyle> cs(ds, IID_ICOMPOSITIONSTYLE);
+	InterfacePtr<ICompositionStyle> cs(ds, UseDefaultIID());
 
 	if (ti.IsNull() || font == nil || cs == nil)
 		return nil;
@@ -267,7 +267,7 @@ IWaxLine * nrsc::compose_line(tiler & tile_manager, IParagraphComposer::Recompos
 {
 	IComposeScanner	* scanner = helper.GetComposeScanner();
 	IDrawingStyle	* ds = scanner->GetCompleteStyleAt(ti);
-	InterfacePtr<ICompositionStyle> cs(ds, IID_ICOMPOSITIONSTYLE);
+	InterfacePtr<ICompositionStyle> cs(ds, UseDefaultIID());
 
 	const bool	first_line = ti == helper.GetParagraphStart();
 	PMReal		left_indent =	cs->IndentLeftBody()

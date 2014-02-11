@@ -238,7 +238,7 @@ bool run::render_run(IWaxGlyphs & glyphs) const
 	}
 
 	// Position diacritics
-	InterfacePtr<IWaxGlyphsME> glyphs_me(&glyphs, IID_IWAXGLYPHSME);
+	InterfacePtr<IWaxGlyphsME> glyphs_me(&glyphs, UseDefaultIID());
 	if (glyphs_me != nil)
 		glyphs_me->AddGlyphMEData(num, x_offs, y_offs, widths);
 
