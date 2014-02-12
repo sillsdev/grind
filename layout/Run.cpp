@@ -147,7 +147,10 @@ bool run::fill(TextIterator & ti, TextIndex span)
 inline
 void run::layout_span_with_spacing(TextIterator & first, const TextIterator & last, PMReal width, glyf::justification_t level)
 {
-	layout_span(first, last - first);
+	const size_t span = last - first;
+	if (span)
+		layout_span(first, span);
+		
 	add_glue(level, width);
 	first = last;
 	++first;

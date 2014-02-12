@@ -48,6 +48,9 @@ run * fallback_run::clone_empty() const
 
 bool fallback_run::layout_span(TextIterator ti, size_t span)
 {
+	if (span ==0)
+		return true;
+
 	InterfacePtr<IFontInstance>	font = _drawing_style->QueryFontInstance(kFalse);
 	if (font == nil)
 		return false;
@@ -60,6 +63,7 @@ bool fallback_run::layout_span(TextIterator ti, size_t span)
 	PMRealGlyphPoint * gps = new PMRealGlyphPoint[span+1];
 	font->FillOutGlyphIDs(gps, span, chars.GrabUTF16Buffer(0), chars.NumUTF16TextChars());
 	font->GetKerns(gps, span);
+
 	gps[span] = gps[span-1]; // Copy the last glyph point so the kerning value is correctly calculated
 	PMRealGlyphPoint * gp = gps;
 
@@ -81,9 +85,7 @@ bool fallback_run::layout_span(TextIterator ti, size_t span)
 		back()->back().kern() = (++gp)->GetXPosition() - total_kern;
 		total_kern = gp->GetXPosition();
 	}
-	// Copy the kerning info.
-
-
+	
 	delete [] gps;
 
 	return true;
