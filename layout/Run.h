@@ -45,9 +45,9 @@ namespace nrsc
 {
 
 
-class run : protected std::list<cluster*>
+class run : protected std::list<cluster>
 {
-	typedef std::list<cluster *>	base_t;
+	typedef std::list<cluster>	base_t;
 
 	// Hide copy constructor and assignment operator.
 	run(const run&);
@@ -75,13 +75,15 @@ protected:
 	TextIndex		_span;
 
 public:
-	virtual ~run();
+	virtual ~run() throw();
 
 	// Member types
 	using base_t::const_iterator;
 	using base_t::iterator;
 	using base_t::difference_type;
 	using base_t::size_type;
+	using base_t::const_reference;
+	using base_t::reference;
 
 	//Iterators
 	using base_t::begin;
@@ -98,8 +100,8 @@ public:
 
 	// Modifiers
 	using base_t::clear;
-	void  push_front(value_type);
-	void  push_back(value_type);
+	reference	open_cluster();
+	void		close_cluster(const_reference );
 	run * split(const_iterator position);
 
 	// Operations
@@ -137,5 +139,19 @@ IDrawingStyle  * run::get_style() const
 {
 	return _drawing_style;
 }
+
+inline
+run::reference run::open_cluster()
+{
+	resize(size()+1);
+	return back();
+}
+
+inline
+void run::close_cluster(run::const_reference cl)
+{
+	_height = std::max(cl.height() + cl.depth(), _height);
+}
+
 
 } // end of namespace nrsc

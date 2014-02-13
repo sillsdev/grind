@@ -56,15 +56,22 @@ run::run(IDrawingStyle * ds)
 {
 }
 
+
+run::~run() throw()
+{
+}
+
+
 inline
 size_t run::num_glyphs() const
 {
 	size_t n = 0;
 	for (const_iterator cl_i = begin(); cl_i != end(); ++cl_i)
-		n += (*cl_i)->size();
+		n += cl_i->size();
 
 	return n;
 }
+
 
 bool run::fill(TextIterator & ti, TextIndex span)
 {
@@ -84,7 +91,7 @@ bool run::fill(TextIterator & ti, TextIndex span)
 			case kTextChar_CR:
 			case kTextChar_SoftCR:
 				layout_span_with_spacing(start, ti, _drawing_style->GetSpaceWidth(), glyf::fill);
-				back()->break_weight() = cluster::breakweight::mandatory;
+				back().break_weight() = cluster::breakweight::mandatory;
 				++ti; ++_span;
 				return true; 
 				break;
@@ -96,7 +103,7 @@ bool run::fill(TextIterator & ti, TextIndex span)
 			case kTextChar_TableContinued:
 			case kTextChar_ObjectReplacementCharacter:	
 				layout_span(start, ti - start);
-				back()->break_weight() = cluster::breakweight::whitespace;
+				back().break_weight() = cluster::breakweight::whitespace;
 				return true; 
 				break;
 			case kTextChar_FlushSpace:
@@ -157,58 +164,38 @@ void run::layout_span_with_spacing(TextIterator & first, const TextIterator & la
 }
 
 
-run::~run() throw()
-{
-	for (iterator i = begin(), i_e = end(); i != i_e; ++i)
-		delete *i;
-}
-
-
-
 void run::add_glue(glyf::justification_t level, PMReal width, cluster::breakweight::type bw)
 {
-	cluster * cl = new cluster();
+	
+	cluster & cl = open_cluster();
 
-	cl->add_glyf(glyf(_drawing_style->GetSpaceGlyph(), level, width, _height, 0));
-	cl->add_chars();
-	cl->break_weight() = bw;
-	push_back(cl);
+	cl.add_glyf(glyf(_drawing_style->GetSpaceGlyph(), level, width, _height, 0));
+	cl.add_chars();
+	cl.break_weight() = bw;
+
+	close_cluster(cl);
 }
 
 
 void run::add_letter(int glyph_id, PMReal width, cluster::breakweight::type bw, bool to_cluster)
 {
-	cluster * cl = 0;
-	if (to_cluster && !empty())
-		cl = back();
-	else
-	{
-		cl = new cluster();
-		push_back(cl);
-	}
+	if (!to_cluster || empty())
+		open_cluster();
 
-	cl->add_glyf(glyf(glyph_id, glyf::letter, width, _height, 0));
-	cl->add_chars();
-	cl->break_weight() = bw;
+	cluster & cl = back();
+	cl.add_glyf(glyf(glyph_id, glyf::letter, width, _height, 0));
+	cl.add_chars();
+	cl.break_weight() = bw;
+	
+	close_cluster(cl);
 }
 
-
-void run::push_front(value_type b)
-{
-	_height = std::max(b->height() + b->depth(), _height);
-	base_t::push_front(b);
-}
-
-void run::push_back(value_type b)
-{
-	_height = std::max(b->height() + b->depth(), _height);
-	base_t::push_back(b);
-}
 
 bool run::joinable(const run & rhs) const
 {
 	return rhs._drawing_style->CanShareWaxRunWith(rhs._drawing_style);
 }
+
 
 run & run::join(run & rhs) 
 {
@@ -231,7 +218,7 @@ bool run::render_run(IWaxGlyphs & glyphs) const
 		  * w  = widths;
 	for (const_iterator cl_i = begin(); cl_i != end(); ++cl_i)
 	{
-		cluster & cl = **cl_i;
+		const cluster & cl = *cl_i;
 		for (cluster::const_iterator c = cl.begin(); c != cl.end(); ++c, ++w, ++xo, ++yo)
 		{
 			*w = 0;
@@ -251,7 +238,7 @@ bool run::render_run(IWaxGlyphs & glyphs) const
 		gi = 0;
 	for (const_iterator cl_i = begin(); cl_i != end(); ++cl_i)
 	{
-		const cluster & cl = **cl_i;
+		const cluster & cl = *cl_i;
 		const PMReal	cluster_advance = cl.width() + cl.back().kern();
 		
 		glyphs.AddMappingWidth(cluster_advance);
@@ -328,7 +315,7 @@ void run::calculate_stretch(stretch & s) const
 
 	for (const_iterator cl = begin(), cl_e = end(); cl != cl_e; ++cl)
 	{
-		for (cluster::const_iterator g = (*cl)->begin(), g_e = (*cl)->end(); g != g_e; ++g)
+		for (cluster::const_iterator g = cl->begin(), g_e = cl->end(); g != g_e; ++g)
 		{
 			const glyf::justification_t level = g->justification();
 			const PMReal unit_width = level > glyf::glyph ? _drawing_style->GetSpaceWidth() : g->width();
@@ -348,7 +335,7 @@ run::const_iterator run::find_break(PMReal desired) const
 	PMReal advance = 0;
 	for (; cl != cl_e; ++cl)
 	{
-		const PMReal advance_ = advance + (*cl)->width();
+		const PMReal advance_ = advance + cl->width();
 		if (advance_ > desired)	break;
 		advance = advance_;
 	}
@@ -361,7 +348,7 @@ run::const_iterator run::find_break(PMReal desired) const
 		//       break demote potential breaks furthest from the 
 		//       desired break point.
 		// advance -= cl->width();
-		if ((*cl)->break_weight() < (*best_cl)->break_weight())
+		if (cl->break_weight() < best_cl->break_weight())
 			best_cl = cl;
 	}
 
@@ -373,7 +360,7 @@ PMReal run::width() const
 {
 	PMReal advance = 0;
 
-	for (const_iterator cl = begin(), cl_e = end(); cl != cl_e; advance += (*cl)->width(), ++cl);
+	for (const_iterator cl = begin(), cl_e = end(); cl != cl_e; advance += cl->width(), ++cl);
 
 	return advance;
 }
@@ -389,7 +376,7 @@ run * run::split(run::const_iterator position)
 
 	// Calculate the new_run's span and update this runs span.
 	for (const_iterator i=new_run->begin(), e = new_run->end(); i != e; ++i)
-		new_run->_span += (*i)->span();
+		new_run->_span += i->span();
 	_span -= new_run->_span;
 
 	return new_run;

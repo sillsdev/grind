@@ -82,7 +82,7 @@ bool fallback_run::layout_span(TextIterator ti, size_t span)
 		}
 
 		// Set the kerning.
-		back()->back().kern() = (++gp)->GetXPosition() - total_kern;
+		back().back().kern() = (++gp)->GetXPosition() - total_kern;
 		total_kern = gp->GetXPosition();
 	}
 	

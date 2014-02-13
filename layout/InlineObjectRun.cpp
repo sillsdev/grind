@@ -74,10 +74,10 @@ bool inline_object::layout_span(TextIterator ti, size_t span)
 	PMRect inline_bounding_box = graphic->GetStrokeBoundingBox();
 
 	// Inline geometry is relative to the baseline of the text. Don't want to add stretch
-	cluster * cl = new cluster();
-	cl->add_glyf(glyf(kInvalidGlyphID, glyf::fixed, inline_bounding_box.Width(), -inline_bounding_box.Top(), 0));
-	cl->add_chars();
-	push_back(cl);
+	cluster & cl = open_cluster();
+	cl.add_glyf(glyf(kInvalidGlyphID, glyf::fixed, inline_bounding_box.Width(), -inline_bounding_box.Top(), 0));
+	cl.add_chars();
+	close_cluster(cl);
 
 	return true;
 }
@@ -97,7 +97,7 @@ bool inline_object::render_run(IWaxRun & run) const
 	InterfacePtr<IWaxGlyphs> glyphs(&run, UseDefaultIID());
 	if (glyphs == nil)	return false;
 
-	glyphs->AddGlyph(front()->front().id(), ToFloat(front()->width()));
+	glyphs->AddGlyph(front().front().id(), ToFloat(front().width()));
 
 	return true;
 }
