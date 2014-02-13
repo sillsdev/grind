@@ -130,9 +130,10 @@ void tile::break_into(tile & rest)
 	}
 	if (r == r_e)	return;
 
-	run::const_iterator cl = (*r)->find_break(desired - advance);
-	if (cl != (*r)->end())
-		rest.push_back((*r)->split(cl));
+	run * const overset = *r;
+	run::const_iterator cl = overset->find_break(desired - advance);
+	if (cl != overset->end())
+		rest.push_back(overset->split(cl));
 	
 	rest.splice(rest.end(), *this, ++r, end());
 }
@@ -265,11 +266,13 @@ Text::GridAlignmentMetric get_grid_alignment(IDrawingStyle * ds, bool first_line
 
 IWaxLine * nrsc::compose_line(tiler & tile_manager, IParagraphComposer::RecomposeHelper & helper, TextIndex ti)
 {
+	const bool	first_line = ti == helper.GetParagraphStart();
+	const size_t para_sz = helper.GetParagraphSpan();
+	const TextIndex para_end = helper.GetParagraphEnd();
 	IComposeScanner	* scanner = helper.GetComposeScanner();
 	IDrawingStyle	* ds = scanner->GetCompleteStyleAt(ti);
 	InterfacePtr<ICompositionStyle> cs(ds, UseDefaultIID());
 
-	const bool	first_line = ti == helper.GetParagraphStart();
 	PMReal		left_indent =	cs->IndentLeftBody()
 									+ (first_line ? cs->IndentLeftFirst() : 0),
 				right_indent =	cs->IndentRightBody();

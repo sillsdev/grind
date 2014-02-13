@@ -365,7 +365,7 @@ run::const_iterator run::find_break(PMReal desired) const
 			best_cl = cl;
 	}
 
-	return best_cl;
+	return ++best_cl;
 }
 
 
@@ -380,13 +380,16 @@ PMReal run::width() const
 
 run * run::split(run::const_iterator position) 
 {
-	run * new_run = clone_empty();
-	new_run->_drawing_style = _drawing_style;
-	new_run->_height        = _height;
-	for (const_iterator i=begin(); i != position; new_run->_span += (*i)->span());
-	
+	// Set up a new run of the same type.
+	run * new_run	 = clone_empty();
+	new_run->_height = _height;
+
+	// transfer the clusters.
 	new_run->splice(new_run->begin(), *this, position, end());
-	
+
+	// Calculate the new_run's span and update this runs span.
+	for (const_iterator i=new_run->begin(), e = new_run->end(); i != e; ++i)
+		new_run->_span += (*i)->span();
 	_span -= new_run->_span;
 
 	return new_run;
