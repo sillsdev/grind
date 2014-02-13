@@ -66,9 +66,6 @@ bool tile::fill_by_span(IComposeScanner & scanner, TextIndex offset, TextIndex s
 	TextIndex	total_span = 0;
 	PMReal		x = _region.Left();
 
-	// If no span is specified then fill until we hit an EOL
-	if (span == 0)	span = scanner.FindSurroundingParagraph(offset, kFalse).End() - offset;
-
 	do
 	{
 		IDrawingStyle * ds = nil;
@@ -265,15 +262,12 @@ Text::GridAlignmentMetric get_grid_alignment(IDrawingStyle * ds, bool first_line
 }
 
 
-IWaxLine * nrsc::compose_line(tiler & tile_manager, IParagraphComposer::RecomposeHelper & helper, TextIndex ti)
+IWaxLine * nrsc::compose_line(tiler & tile_manager, IParagraphComposer::RecomposeHelper & helper, const TextIndex ti)
 {
-	const bool	first_line = ti == helper.GetParagraphStart();
-	const size_t para_sz = helper.GetParagraphSpan();
-	const TextIndex para_end = helper.GetParagraphEnd();
 	IComposeScanner	* scanner = helper.GetComposeScanner();
 	IDrawingStyle	* ds = scanner->GetCompleteStyleAt(ti);
 	InterfacePtr<ICompositionStyle> cs(ds, UseDefaultIID());
-
+	const bool	first_line = ti == helper.GetParagraphStart();
 	PMReal		left_indent =	cs->IndentLeftBody()
 									+ (first_line ? cs->IndentLeftFirst() : 0),
 				right_indent =	cs->IndentRightBody();
@@ -295,7 +289,7 @@ IWaxLine * nrsc::compose_line(tiler & tile_manager, IParagraphComposer::Recompos
 		// Create the first tile and fill with the entire paragraph (this will almost always be overset)
 		PMRectCollection::const_iterator t = tiles.begin();
 		line.push_back(new tile(*t));
-		if (!line.front()->fill_by_span(*scanner, ti))
+		if (!line.front()->fill_by_span(*scanner, ti, helper.GetParagraphEnd()-ti))
 			return nil;
 
 		// Flow text into any remaining tiles, (not the common case)

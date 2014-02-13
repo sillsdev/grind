@@ -94,7 +94,7 @@ public:
 	using base_t::push_front;
 	using base_t::push_back;
 	void	clear();
-	bool	fill_by_span(IComposeScanner & scanner, TextIndex offset, TextIndex span=0);
+	bool	fill_by_span(IComposeScanner & scanner, TextIndex offset, TextIndex span);
 
 	// Operations
 	void	justify();
@@ -122,7 +122,7 @@ PMPoint	tile::dimensions() const
 }
 
 
-IWaxLine * compose_line(tiler &, IParagraphComposer::RecomposeHelper &, TextIndex ti);
+IWaxLine * compose_line(tiler &, IParagraphComposer::RecomposeHelper &, const TextIndex ti);
 
 bool rebuild_line(const IParagraphComposer::RebuildHelper &);
 
