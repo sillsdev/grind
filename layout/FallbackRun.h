@@ -40,6 +40,8 @@ namespace nrsc
 
 class fallback_run : public run
 {
+	fallback_run();
+
 	// Prevent automatic copy-ctor and assignment generation
 	fallback_run(const fallback_run &);
 	fallback_run & operator = (const fallback_run &);
@@ -50,6 +52,12 @@ class fallback_run : public run
 public:
 	fallback_run(IDrawingStyle * ds);
 };
+
+
+inline
+fallback_run::fallback_run()
+{
+}
 
 inline
 fallback_run::fallback_run(IDrawingStyle * ds)

@@ -46,7 +46,7 @@ using namespace nrsc;
 
 run * inline_object::clone_empty() const
 {
-	return new inline_object(_drawing_style);
+	return new inline_object();
 }
 
 

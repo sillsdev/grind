@@ -48,6 +48,12 @@ using namespace nrsc;
 
 const textchar kTextChar_EnQuadSpace = 0x2000;
 
+run::run()
+: _drawing_style(nil),
+  _height(0),
+  _span(0)
+{
+}
 
 run::run(IDrawingStyle * ds)
 : _drawing_style(ds),
@@ -369,7 +375,8 @@ run * run::split(run::const_iterator position)
 {
 	// Set up a new run of the same type.
 	run * new_run	 = clone_empty();
-	new_run->_height = _height;
+	new_run->_drawing_style = _drawing_style;
+	new_run->_height        = _height;
 
 	// transfer the clusters.
 	new_run->splice(new_run->begin(), *this, position, end());

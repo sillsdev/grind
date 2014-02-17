@@ -42,6 +42,8 @@ class inline_object : public run
 {
 	UIDRef	_inline_UID_ref;
 
+	inline_object();
+
 	// Prevent automatic copy-ctor and assignment generation
 	inline_object(const inline_object &);
 	inline_object & operator = (const inline_object &);
@@ -54,6 +56,12 @@ public:
 	inline_object(IDrawingStyle * ds);
 };
 
+
+inline
+inline_object::inline_object()
+: _inline_UID_ref(nil, kInvalidUID)
+{
+}
 
 inline
 inline_object::inline_object(IDrawingStyle * ds)

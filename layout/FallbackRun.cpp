@@ -42,7 +42,7 @@ using namespace nrsc;
 
 run * fallback_run::clone_empty() const
 {
-	return new fallback_run(_drawing_style);
+	return new fallback_run();
 }
 
 

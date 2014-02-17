@@ -60,6 +60,8 @@ public:
 	typedef struct { PMReal min, max; }	stretch[5];
 
 protected:
+	run();
+
 	void	add_glue(glyf::justification_t level, PMReal width, cluster::breakweight::type bw=cluster::breakweight::whitespace);
 	void	add_letter(int glyph_id, PMReal width, cluster::breakweight::type bw=cluster::breakweight::letter, bool to_cluster=false);
 
