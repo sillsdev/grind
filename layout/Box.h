@@ -192,6 +192,8 @@ public:
 
 	cluster();
 
+	PMReal			width() const throw();
+
 	void			add_glyf(const glyf &);
 	void			add_chars(TextIndex n=1);
 	iterator		begin();

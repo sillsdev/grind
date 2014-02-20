@@ -43,7 +43,17 @@ void cluster::add_glyf(const glyf &g)
 {
 	_height = std::max(g.height(), _height);
 	_depth  = std::max(g.depth(), _depth);
-	_width += g.width();
 
 	_components.push_back(g);
+}
+
+
+PMReal cluster::width() const throw()
+{
+	PMReal advance = 0;
+
+	for (cluster::const_iterator g = begin(); g != end(); ++g)
+		advance += g->pos().X() + g->advance();
+
+	return advance;
 }
