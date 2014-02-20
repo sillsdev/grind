@@ -28,6 +28,8 @@ THE SOFTWARE.
 #include <IDrawingStyle.h>
 #include <IParcel.h>
 #include <IFontInstance.h>
+#include <IGridRelatedStyle.h>
+#include <ITextParcelList.h>
 #include <IWaxLine.h>
 // Library headers
 // Module header
@@ -66,21 +68,20 @@ line_metrics & line_metrics::operator +=(const IDrawingStyle * const ds)
 const PMReal tiler::GRID_ALIGNMENT_OFFSET;
 
 
-tiler::tiler(IParagraphComposer::Tiler & t, 
-					 ParcelKey pk, 
-					 PMReal y, 
-					 Text::FirstLineOffsetMetric flo)
-: _tiler(t),
+tiler::tiler(IParagraphComposer::RecomposeHelper & helper)
+: _helper(helper),
   _height(0.0),
-  _parcel_key(pk),
+  _parcel_key(helper.GetStartingParcelKey()),
   _TOP_height(0.0),
-  _TOP_height_metric(flo),
+  _TOP_height_metric(_parcel_key.IsValid() 
+						? helper.GetTextParcelList()->GetFirstLineOffsetMetric(_parcel_key) 
+					    : Text::kFLOLeading),
   _grid_alignment_metric(Text::kGANone),
-  _y_offset(y),
+  _y_offset(helper.GetStartingYPosition()),
   _at_TOP(kFalse),
   _parcel_pos_dependent(kFalse),
   _left_margin(0.0),
-  _righ_margin(0.0)
+  _right_margin(0.0)
 {
 }
 
@@ -92,17 +93,26 @@ tiler::~tiler(void)
 
 bool tiler::next_line(TextIndex curr_pos, 
 						 const line_metrics & line,
-						 Text::GridAlignmentMetric grid_metric,
-						 const PMReal & line_indent_left, 
-						 const PMReal & line_lndent_right)
+						 const IDrawingStyle * ds)
 {
 	_tiles.clear();
 
+	InterfacePtr<ICompositionStyle> cs(ds, UseDefaultIID());
+	InterfacePtr<IGridRelatedStyle> grs(ds, UseDefaultIID());
+
+	if (cs == nil || grs == nil)	return false;
+
 	// The minimum width of a tile must be big enough to fit the indents plus one
 	// glyph, which we assume to be a capital M.
-	const PMReal min_width = line.em_box_height + line_indent_left + line_lndent_right;
-	_grid_alignment_metric = grid_metric;
+	const bool first_line = curr_pos == _helper.GetParagraphStart();
 	_height = line.leading;
+	_grid_alignment_metric = (grs->GetAlignOnlyFirstLine() == kFalse || first_line) 
+								? grs->GetGridAlignmentMetric() 
+								: Text::kGANone;
+	const PMReal	line_indent_left  = cs->IndentLeftBody()
+									     + (first_line ? cs->IndentLeftFirst() : 0), 
+					line_indent_right = cs->IndentRightBody(),
+					min_width		  = line.em_box_height + line_indent_left + line_indent_right;
 	do
 	{
 		_TOP_height = line[_TOP_height_metric];
@@ -122,7 +132,7 @@ bool tiler::next_line(TextIndex curr_pos,
 
 bool tiler::try_get_tiles(PMReal min_width, const line_metrics & line, TextIndex curr_pos)
 {
-	return _tiler.GetTiles(min_width,
+	return _helper.GetTiles(min_width,
 						   line.leading,
 						   _TOP_height,
 						   _grid_alignment_metric,	// Grid alignment metric
@@ -140,7 +150,7 @@ bool tiler::try_get_tiles(PMReal min_width, const line_metrics & line, TextIndex
 						   &_at_TOP,
 						   &_parcel_pos_dependent,
 						   &_left_margin,
-						   &_righ_margin);	
+						   &_right_margin);	
 }
 
 

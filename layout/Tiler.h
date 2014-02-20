@@ -111,17 +111,12 @@ class tiler
 {
 	static const PMReal GRID_ALIGNMENT_OFFSET;
 public:
-	tiler(IParagraphComposer::Tiler &, 
-			ParcelKey, 
-			PMReal y, 
-			Text::FirstLineOffsetMetric);
+	tiler(IParagraphComposer::RecomposeHelper & helper);
 	~tiler(void);
 
 	bool	next_line(TextIndex curr_pos, 
-					  const line_metrics & line,
-					  Text::GridAlignmentMetric grid_metric,
-					  const PMReal & line_indent_left, 
-					  const PMReal & line_lndent_right);
+						 const line_metrics & line,
+						 const IDrawingStyle * ds);
 
 	const PMRectCollection	& tiles() const;
 	const ParcelKey			& parcel() const;
@@ -133,7 +128,7 @@ private:
 	bool try_get_tiles(PMReal min_width, const line_metrics & line, TextIndex curr_pos);
 	bool get_grid_alignment_metric();
 
-	IParagraphComposer::Tiler & _tiler;
+	IParagraphComposer::RecomposeHelper & _helper;
 	// Updateable state from IParagraphComposer::Tiler::GetTiles
 	ParcelKey					_parcel_key;
 	PMReal						_height;
@@ -145,7 +140,7 @@ private:
 	bool16						_at_TOP;
 	bool16						_parcel_pos_dependent;
 	PMReal						_left_margin;
-	PMReal						_righ_margin;
+	PMReal						_right_margin;
 };
 
 inline

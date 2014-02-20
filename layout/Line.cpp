@@ -28,7 +28,6 @@ THE SOFTWARE.
 #include <IComposeScanner.h>
 #include <ICompositionStyle.h>
 #include <IDrawingStyle.h>
-#include <IGridRelatedStyle.h>
 #include <IPMFont.h>
 #include <IWaxCollection.h>
 #include <IWaxLine.h>
@@ -250,27 +249,11 @@ struct line_t : public std::vector<tile*>
 };
 
 
-Text::GridAlignmentMetric get_grid_alignment(IDrawingStyle * ds, bool first_line)
-{
-	InterfacePtr<IGridRelatedStyle> grs(ds, UseDefaultIID());
-	if (grs == nil)		
-		return Text::kGANone;
-
-	return (grs->GetAlignOnlyFirstLine() == kFalse || first_line) 
-		? grs->GetGridAlignmentMetric() 
-		: Text::kGANone;
-}
-
-
 IWaxLine * nrsc::compose_line(tiler & tile_manager, IParagraphComposer::RecomposeHelper & helper, const TextIndex ti)
 {
 	IComposeScanner	* scanner = helper.GetComposeScanner();
 	IDrawingStyle	* ds = scanner->GetCompleteStyleAt(ti);
-	InterfacePtr<ICompositionStyle> cs(ds, UseDefaultIID());
 	const bool	first_line = ti == helper.GetParagraphStart();
-	PMReal		left_indent =	cs->IndentLeftBody()
-									+ (first_line ? cs->IndentLeftFirst() : 0),
-				right_indent =	cs->IndentRightBody();
 	line_t			line;
 	line_metrics	lm(ds);
 	size_t			line_span;
@@ -280,9 +263,7 @@ IWaxLine * nrsc::compose_line(tiler & tile_manager, IParagraphComposer::Recompos
 		line.clear();
 
 		// Get tiles for this line
-		if (!tile_manager.next_line(ti, lm, 
-					get_grid_alignment(ds, first_line), 
-					left_indent, right_indent))
+		if (!tile_manager.next_line(ti, lm, ds))
 			break;
 		const PMRectCollection & tiles = tile_manager.tiles();
 
