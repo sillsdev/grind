@@ -349,7 +349,7 @@ bool nrsc::rebuild_line(const IParagraphComposer::RebuildHelper & helper)
 	// Create the wax runs
 	for (line_t::iterator t = line.begin(), t_e = line.end(); t != t_e; ++t)
 	{
-		PMReal x = (*t)->position().X();
+		PMReal x = (*t)->position().X() - wl->GetXPosition();
 
 		for (tile::iterator r = (*t)->begin(), r_e = (*t)->end(); r != r_e; ++r)
 		{

@@ -119,6 +119,12 @@ bool tiler::next_line(TextIndex curr_pos,
 	}
 	while (!try_get_tiles(min_width, line, curr_pos));
 
+	for (PMRectCollection::iterator r = _tiles.begin(); r != _tiles.end(); ++r)
+	{
+		r->Left() = std::max(r->Left(), _left_margin + line_indent_left);
+		r->Right() = std::min(r->Right(), _right_margin - line_indent_right);
+	}
+
 	if (_tiles.size() == 0)
 	{
 		_y_offset += line.leading;
