@@ -135,7 +135,7 @@ bool run::fill(TextIterator & ti, TextIndex span)
 				layout_span_with_spacing(start, ti, font->GetGlyphWidth(font->GetGlyphID(kTextChar_Zero)), glyf::fixed);
 				break;
 			case kTextChar_PunctuationSpace:
-				layout_span_with_spacing(start, ti, font->GetGlyphWidth(font->GetGlyphID(kTextChar_Comma)), glyf::fixed);
+				layout_span_with_spacing(start, ti, font->GetGlyphWidth(font->GetGlyphID(kTextChar_Period)), glyf::fixed);
 				break;
 			case kTextChar_ThinSpace:
 				layout_span_with_spacing(start, ti, em_space_width/8, glyf::fixed);
@@ -143,8 +143,18 @@ bool run::fill(TextIterator & ti, TextIndex span)
 			case kTextChar_HairSpace:
 				layout_span_with_spacing(start, ti, em_space_width/24, glyf::space);
 				break;
+			case kTextChar_NarrowNoBreakSpace:
+				layout_span_with_spacing(start, ti, _drawing_style->GetSpaceWidth(), glyf::fixed);
+				back().break_weight() = cluster::breakweight::never;
+				break;
 			case kTextChar_ZeroSpaceBreak:
 				layout_span_with_spacing(start, ti, 0, glyf::fixed);
+				break;
+			case kTextChar_ZeroWidthNonJoiner:
+			case kTextChar_ZeroWidthJoiner:
+			case kTextChar_ZeroSpaceNoBreak:
+				layout_span_with_spacing(start, ti, 0, glyf::fixed);
+				back().break_weight() = cluster::breakweight::never;
 				break;
 			default: break;
 		}
