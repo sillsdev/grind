@@ -35,10 +35,6 @@ THE SOFTWARE.
 // Project forward declarations
 using namespace nrsc;
 
-box::~box() throw()
-{
-}
-
 void cluster::add_glyf(const glyf &g)
 {
 	_height = std::max(g.height(), _height);

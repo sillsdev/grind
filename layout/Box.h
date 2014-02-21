@@ -46,60 +46,27 @@ This represents the idea of TeX style box in it's justifaction/line-break
 algorithm, with the addition of a kern attribute to handle InDesign's per 
 character kerning concept.
 */
-class box
-{
-protected:
-	PMReal			_width,
-					_height,
-					_depth;
-	box(PMReal width, PMReal height, PMReal depth);
 
-public:
-	virtual ~box() throw();
-
-	PMReal	width() const throw();
-	PMReal	height() const throw();
-	PMReal	depth() const throw();
-};
-
-
-inline
-box::box(PMReal w, PMReal h, PMReal d)
-: _width(w),
-  _height(h),
-  _depth(d)
-{}
-
-inline
-PMReal box::width() const throw() {
-	return _width;
-}
-
-inline
-PMReal box::height() const throw() {
-	return _height;
-}
-
-inline
-PMReal box::depth() const throw() {
-	return _depth;
-}
-
-
-class glyf : public box
+class glyf 
 {
 public:
 	enum justification_t		{fixed, glyph, letter, space, fill};
 
 private:
-	PMPoint					_pos;
-	int						_id;
-	justification_t			_just_level;
+	PMReal			_width,
+					_height,
+					_depth;
+	PMPoint			_pos;
+	int				_id;
+	justification_t	_just_level;
 
 public:
 	glyf(unsigned short id, justification_t level, PMReal width, PMReal height, PMReal depth, PMPoint pos=PMPoint(0,0));
 	
 	unsigned short	id() const throw();
+	PMReal			width() const throw();
+	PMReal			height() const throw();
+	PMReal			depth() const throw();
 	PMReal			advance() const throw();
 	void			shift(const PMPoint & delta) throw();
 	PMPoint		  & pos() throw();
@@ -110,7 +77,9 @@ public:
 
 inline
 glyf::glyf(unsigned short id, justification_t l, PMReal w, PMReal h, PMReal d, PMPoint p)
-: box(w, h, d),
+: _width(w), 
+  _height(h), 
+  _depth(d),
   _pos(p),
   _id(id),
   _just_level(l)
@@ -119,6 +88,21 @@ glyf::glyf(unsigned short id, justification_t l, PMReal w, PMReal h, PMReal d, P
 inline
 unsigned short glyf::id() const throw() {
 	return _id;
+}
+
+inline
+PMReal glyf::width() const throw() {
+	return _width;
+}
+
+inline
+PMReal glyf::height() const throw() {
+	return _height;
+}
+
+inline
+PMReal glyf::depth() const throw() {
+	return _depth;
 }
 
 inline
@@ -156,10 +140,15 @@ void glyf::set_glue() throw()
 	_just_level = fixed;
 }
 
-class cluster : public box
+
+
+class cluster
 {
 private:
 	typedef std::vector<glyf>	components_t;
+
+	PMReal			_height,
+					_depth;
 	components_t	_components;
 	unsigned char	_span;
 	int				_breakweight;
@@ -186,6 +175,8 @@ public:
 	cluster();
 
 	PMReal			width() const;
+	PMReal			height() const;
+	PMReal			depth() const;
 
 	void			add_glyf(const glyf &);
 	void			add_chars(TextIndex n=1);
@@ -207,11 +198,22 @@ public:
 
 inline
 cluster::cluster()
-: box(0,0,0),
+: _height(0),
+  _depth(0),
   _span(0),
   _breakweight(cluster::breakweight::clip)
 {
-	_components.reserve(2);
+	_components.reserve(1);
+}
+
+inline
+PMReal cluster::height() const {
+	return _height;
+}
+
+inline
+PMReal cluster::depth() const {
+	return _depth;
 }
 
 inline
