@@ -225,16 +225,16 @@ bool run::render_run(IWaxGlyphs & glyphs) const
 	for (const_iterator cl_i = begin(); cl_i != end(); ++cl_i)
 	{
 		const cluster & cl = *cl_i;
-		for (cluster::const_iterator c = cl.begin(); c != cl.end(); ++c, ++w, ++xo, ++yo)
+		for (cluster::const_iterator g = cl.begin(); g != cl.end(); ++g, ++w, ++xo, ++yo)
 		{
 			*w = 0;
-			*xo = ToFloat(c->pos().X());
-			*yo = ToFloat(c->pos().Y());
-			glyphs.AddGlyph(c->id(), ToFloat(c->advance()));
+			*xo = ToFloat(g->pos().X());
+			*yo = ToFloat(g->pos().Y());
+			glyphs.AddGlyph(g->id(), ToFloat(g->advance()));
 		}
 	}
 
-	// Position diacritics
+	// Position shifted glyphs
 	InterfacePtr<IWaxGlyphsME> glyphs_me(&glyphs, UseDefaultIID());
 	if (glyphs_me != nil)
 		glyphs_me->AddGlyphMEData(num, x_offs, y_offs, widths);
@@ -245,7 +245,7 @@ bool run::render_run(IWaxGlyphs & glyphs) const
 	for (const_iterator cl_i = begin(); cl_i != end(); ++cl_i)
 	{
 		const cluster & cl = *cl_i;
-		const PMReal	cluster_advance = cl.width() + cl.back().kern();
+		const PMReal	cluster_advance = cl.width();
 		
 		glyphs.AddMappingWidth(cluster_advance);
 		glyphs.AddMappingRange(i++, gi, cl.size());

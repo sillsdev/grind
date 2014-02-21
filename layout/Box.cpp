@@ -53,7 +53,7 @@ PMReal cluster::width() const throw()
 	PMReal advance = 0;
 
 	for (cluster::const_iterator g = begin(); g != end(); ++g)
-		advance += g->pos().X() + g->advance();
+		advance += g->advance();
 
 	return advance;
 }

@@ -94,16 +94,14 @@ public:
 private:
 	PMPoint					_pos;
 	int						_id;
-	PMReal					_kern;
 	justification_t			_just_level;
 
 public:
 	glyf(unsigned short id, justification_t level, PMReal width, PMReal height, PMReal depth, PMPoint pos=PMPoint(0,0));
 	
 	unsigned short	id() const throw();
-	PMReal			kern() const throw();
-	PMReal		  & kern() throw();
 	PMReal			advance() const throw();
+	void			shift(const PMPoint & delta) throw();
 	PMPoint		  & pos() throw();
 	const PMPoint & pos() const throw();
 	justification_t justification() const throw();
@@ -115,7 +113,6 @@ glyf::glyf(unsigned short id, justification_t l, PMReal w, PMReal h, PMReal d, P
 : box(w, h, d),
   _pos(p),
   _id(id),
-  _kern(0.0),
   _just_level(l)
 {}
 
@@ -125,18 +122,14 @@ unsigned short glyf::id() const throw() {
 }
 
 inline
-PMReal glyf::kern() const throw() {
-	return _kern;
-}
-
-inline
-PMReal & glyf::kern() throw() {
-	return _kern;
-}
-
-inline
 PMReal glyf::advance() const throw() {
-	return _width + _kern;
+	return _pos.X() + _width;
+}
+
+inline
+void glyf::shift(const PMPoint & delta) throw()
+{
+	_pos += delta;
 }
 
 inline
@@ -192,7 +185,7 @@ public:
 
 	cluster();
 
-	PMReal			width() const throw();
+	PMReal			width() const;
 
 	void			add_glyf(const glyf &);
 	void			add_chars(TextIndex n=1);
