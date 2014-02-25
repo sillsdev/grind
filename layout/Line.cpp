@@ -222,10 +222,10 @@ run * tile::create_run(IDrawingStyle * ds, PMReal & x, TextIterator & ti, TextIn
 	{
 		const TabStop tab = cs->GetTabStopAfter(x);
 
-		cluster & cl = r->open_cluster();
-		cl.add_glyf(glyf(ds->GetSpaceGlyph(), glyf::fixed, tab.GetPosition() - x, ds->GetLeading(), 0));
-		cl.add_chars();
-		cl.break_weight() = cluster::breakweight::whitespace;
+		cluster * cl = r->open_cluster();
+		cl->add_glyf(glyf(ds->GetSpaceGlyph(), glyf::fixed, tab.GetPosition() - x, ds->GetLeading(), 0));
+		cl->add_chars();
+		cl->break_weight() = cluster::breakweight::whitespace;
 		r->close_cluster(cl);
 
 		x = tab.GetPosition();

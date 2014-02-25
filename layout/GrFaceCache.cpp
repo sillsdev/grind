@@ -36,21 +36,22 @@ THE SOFTWARE.
 // Module header
 #include "GrFaceCache.h"
 
+using namespace nrsc;
 
-GrFaceCache::GrFaceCache(size_t capacity, unsigned int max_dwell)
+gr_face_cache::gr_face_cache(size_t capacity, unsigned int max_dwell)
 : _capacity(capacity), 
   _max_dwell(max_dwell)
 {
 }
 
-GrFaceCache::~GrFaceCache(void)
+gr_face_cache::~gr_face_cache(void)
 {
 	for (store_t::iterator i = _faces.begin(); i != _faces.end(); ++i)
 		destroy_entry(*i);
 }
 
 
-GrFaceCache::value_t GrFaceCache::operator [] (const key_t font)
+gr_face_cache::value_t gr_face_cache::operator [] (const key_t font)
 {
 	if (font == nil)	return 0;
 
@@ -58,7 +59,7 @@ GrFaceCache::value_t GrFaceCache::operator [] (const key_t font)
 	const K2Vector<PMString> * const paths = font->GetFullPath();
 	const PMString path = paths ? (*paths)[0] : nil;
 	if (ft != IPMFont::kTrueTypeFont 
-		|| paths[0].empty())
+		|| path.empty())
 		return 0;
 
 	store_t::iterator i = std::find(_faces.begin(), _faces.end(), path);
@@ -73,13 +74,13 @@ GrFaceCache::value_t GrFaceCache::operator [] (const key_t font)
 }
 
 
-void GrFaceCache::destroy_entry(const entry & e)
+void gr_face_cache::destroy_entry(const entry & e)
 {
 	gr_face_destroy(e.face);
 }
 
 
-void GrFaceCache::spring_clean()
+void gr_face_cache::spring_clean()
 {
 	while (_faces.size() >= _capacity)
 	{
@@ -88,12 +89,12 @@ void GrFaceCache::spring_clean()
 	}
 }
 
-void GrFaceCache::freshen(const store_t::iterator & i)
+void gr_face_cache::freshen(const store_t::iterator & i)
 {
 	_faces.splice(_faces.begin(), _faces, i);
 }
 
-gr_face * GrFaceCache::face_from_platform_font(const PMString & path)
+gr_face * gr_face_cache::face_from_platform_font(const PMString & path)
 {
 	std::string utf8_path;
 	adobe::to_utf8(path.begin(), path.end(), std::back_inserter(utf8_path));
@@ -102,13 +103,13 @@ gr_face * GrFaceCache::face_from_platform_font(const PMString & path)
 }
 
 inline
-GrFaceCache::entry::entry(const PMString & k, const value_t f) throw()
+gr_face_cache::entry::entry(const PMString & k, const value_t f) throw()
 : key(k),
   face(f)
 {}
 
 inline
-bool GrFaceCache::entry::operator ==(const GrFaceCache::entry &rhs) const throw()
+bool gr_face_cache::entry::operator ==(const gr_face_cache::entry &rhs) const throw()
 { 
 	return rhs.key == key;
 }

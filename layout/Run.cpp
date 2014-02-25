@@ -183,11 +183,11 @@ void run::layout_span_with_spacing(TextIterator & first, const TextIterator & la
 void run::add_glue(glyf::justification_t level, PMReal width, cluster::breakweight::type bw)
 {
 	
-	cluster & cl = open_cluster();
+	cluster * cl = open_cluster();
 
-	cl.add_glyf(glyf(_drawing_style->GetSpaceGlyph(), level, width, _height, 0));
-	cl.add_chars();
-	cl.break_weight() = bw;
+	cl->add_glyf(glyf(_drawing_style->GetSpaceGlyph(), level, width, _height, 0));
+	cl->add_chars();
+	cl->break_weight() = bw;
 
 	close_cluster(cl);
 }

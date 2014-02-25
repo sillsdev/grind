@@ -32,15 +32,21 @@ THE SOFTWARE.
 // Module header
 
 // Forward declarations
-struct gr_face;
+// InDesign interfaces
 class IPMFont;
+// Graphite forward delcarations
+struct gr_face;
+// Project forward declarations
 
-/** A cache of Graphite2 gr_face objects keyed to file path. Lifetime is 
+namespace nrsc
+{
+
+	/** A cache of Graphite2 gr_face objects keyed to file path. Lifetime is 
 	recorded counting accesses and an entry's dwell time is reset if it is 
 	accessed and an entry is evicted if it is the oldest and the cache is at 
 	capacity or if it's dwell time is greater than the maximum allowed.
 */
-class GrFaceCache
+class gr_face_cache
 {
 public:
 	typedef IPMFont *		key_t;
@@ -53,8 +59,8 @@ public:
 			unlimited time.
 		
 	*/
-    GrFaceCache(size_t capacity, unsigned int max_dwell=0);
-	~GrFaceCache(void);
+    gr_face_cache(size_t capacity, unsigned int max_dwell=0);
+	~gr_face_cache(void);
 
 	bool empty() const 
 	{
@@ -97,3 +103,6 @@ private:
 	const size_t			_capacity;
 	const unsigned int		_max_dwell;
 };
+
+
+} // end of namespace nrsc

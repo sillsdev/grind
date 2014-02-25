@@ -74,9 +74,9 @@ bool inline_object::layout_span(TextIterator ti, size_t span)
 	PMRect inline_bounding_box = graphic->GetStrokeBoundingBox();
 
 	// Inline geometry is relative to the baseline of the text. Don't want to add stretch
-	cluster & cl = open_cluster();
-	cl.add_glyf(glyf(kInvalidGlyphID, glyf::fixed, inline_bounding_box.Width(), -inline_bounding_box.Top(), 0));
-	cl.add_chars();
+	cluster * cl = open_cluster();
+	cl->add_glyf(glyf(kInvalidGlyphID, glyf::fixed, inline_bounding_box.Width(), -inline_bounding_box.Top(), 0));
+	cl->add_chars();
 	close_cluster(cl);
 
 	return true;
