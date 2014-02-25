@@ -203,7 +203,7 @@ void run::add_letter(int glyph_id, PMReal width, cluster::breakweight::type bw, 
 	cl.add_chars();
 	cl.break_weight() = bw;
 	
-	close_cluster(cl);
+	close_cluster(&cl);
 }
 
 

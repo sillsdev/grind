@@ -36,6 +36,8 @@ THE SOFTWARE.
 #include <TabStop.h>
 // Module header
 #include "FallbackRun.h"
+#include "GraphiteRun.h"
+#include "GrFaceCache.h"
 #include "InlineObjectRun.h"
 #include "Line.h"
 #include "Run.h"
@@ -60,7 +62,7 @@ tile::~tile()
 }
 
 
-bool tile::fill_by_span(IComposeScanner & scanner, TextIndex offset, TextIndex span)
+bool tile::fill_by_span(IComposeScanner & scanner, gr_face_cache & faces, TextIndex offset, TextIndex span)
 {
 	TextIndex	total_span = 0;
 	PMReal		x = _region.Left();
@@ -76,7 +78,7 @@ bool tile::fill_by_span(IComposeScanner & scanner, TextIndex offset, TextIndex s
 
 		do
 		{
-			run * const r = create_run(ds, x, ti, run_span);
+			run * const r = create_run(faces, ds, x, ti, run_span);
 			if (r == nil)	return false;
 			push_back(r);
 
@@ -175,7 +177,7 @@ void tile::justify()
 }
 
 
-run * tile::create_run(IDrawingStyle * ds, PMReal & x, TextIterator & ti, TextIndex span)
+run * tile::create_run(gr_face_cache &faces, IDrawingStyle * ds, PMReal & x, TextIterator & ti, TextIndex span)
 {
 	InterfacePtr<IPMFont>			font = ds->QueryFont();
 	InterfacePtr<ICompositionStyle> cs(ds, UseDefaultIID());
@@ -199,10 +201,15 @@ run * tile::create_run(IDrawingStyle * ds, PMReal & x, TextIterator & ti, TextIn
 		{
 		case IPMFont::kOpenTypeTTFontType:
 		case IPMFont::kTrueTypeFontType:
-			r = new fallback_run(ds);
-			if (r && r->fill(ti, span)) break;
-			delete r;
-
+		{
+			gr_face * const face = faces[font];
+			if (face)
+			{
+				r = new graphite_run(face, ds);
+				if (r && r->fill(ti, span)) break;
+				delete r;
+			}
+		}
 		default:
 			r = new fallback_run(ds);
 			if (r)	r->fill(ti, span);
@@ -249,7 +256,7 @@ struct line_t : public std::vector<tile*>
 };
 
 
-IWaxLine * nrsc::compose_line(tiler & tile_manager, IParagraphComposer::RecomposeHelper & helper, const TextIndex ti)
+IWaxLine * nrsc::compose_line(tiler & tile_manager, gr_face_cache & faces, IParagraphComposer::RecomposeHelper & helper, const TextIndex ti)
 {
 	IComposeScanner	* scanner = helper.GetComposeScanner();
 	IDrawingStyle	* ds = scanner->GetCompleteStyleAt(ti);
@@ -270,7 +277,7 @@ IWaxLine * nrsc::compose_line(tiler & tile_manager, IParagraphComposer::Recompos
 		// Create the first tile and fill with the entire paragraph (this will almost always be overset)
 		PMRectCollection::const_iterator t = tiles.begin();
 		line.push_back(new tile(*t));
-		if (!line.front()->fill_by_span(*scanner, ti, helper.GetParagraphEnd()-ti))
+		if (!line.front()->fill_by_span(*scanner, faces, ti, helper.GetParagraphEnd()-ti))
 			return nil;
 
 		// Flow text into any remaining tiles, (not the common case)
@@ -318,7 +325,7 @@ IWaxLine * nrsc::compose_line(tiler & tile_manager, IParagraphComposer::Recompos
 }
 
 
-bool nrsc::rebuild_line(const IParagraphComposer::RebuildHelper & helper)
+bool nrsc::rebuild_line(gr_face_cache & faces, const IParagraphComposer::RebuildHelper & helper)
 {
 	const IWaxLine	* wl = helper.GetWaxLine();
 	IComposeScanner * scanner = helper.GetComposeScanner();
@@ -333,7 +340,7 @@ bool nrsc::rebuild_line(const IParagraphComposer::RebuildHelper & helper)
 	{
 		tile * t;
 		line.push_back(t = new tile(PMRect(wl->GetXPosition(i), y_top, wl->GetXPosition(i) + wl->GetTargetWidth(i), y_bottom)));
-		t->fill_by_span(*scanner, ti, wl->GetTextSpanInTile(i));
+		t->fill_by_span(*scanner, faces, ti, wl->GetTextSpanInTile(i));
 
 		tile_span = t->span();
 		if (tile_span != wl->GetTextSpanInTile(i)) return false;

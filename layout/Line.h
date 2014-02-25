@@ -44,7 +44,7 @@ class IWaxLine;
 namespace nrsc 
 {
 // Project forward declarations
-class	box;
+class	gr_face_cache;
 struct	line_metrics;
 class	run;
 class   tiler;
@@ -60,7 +60,7 @@ class tile : private std::list<run*>
 	tile & operator = (const tile &);
 
 
-	static run * create_run(IDrawingStyle * ds, PMReal & x, TextIterator & ti, TextIndex span);
+	static run * create_run(gr_face_cache & faces, IDrawingStyle * ds, PMReal & x, TextIterator & ti, TextIndex span);
 
 public:
 	tile(const PMRect & region=PMRect());
@@ -94,7 +94,7 @@ public:
 	using base_t::push_front;
 	using base_t::push_back;
 	void	clear();
-	bool	fill_by_span(IComposeScanner & scanner, TextIndex offset, TextIndex span);
+	bool	fill_by_span(IComposeScanner & scanner, gr_face_cache & faces, TextIndex offset, TextIndex span);
 
 	// Operations
 	void	justify();
@@ -122,8 +122,8 @@ PMPoint	tile::dimensions() const
 }
 
 
-IWaxLine * compose_line(tiler &, IParagraphComposer::RecomposeHelper &, const TextIndex ti);
+IWaxLine * compose_line(tiler &, gr_face_cache &, IParagraphComposer::RecomposeHelper &, const TextIndex ti);
 
-bool rebuild_line(const IParagraphComposer::RebuildHelper &);
+bool rebuild_line(gr_face_cache & faces, const IParagraphComposer::RebuildHelper &);
 
 } // end of namespace nrsc
