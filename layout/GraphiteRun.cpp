@@ -106,7 +106,8 @@ bool graphite_run::layout_span(TextIterator ti, size_t span)
 
 	// Add the glyphs with their natural widths
 	cluster * cl = open_cluster();
-	unsigned int cl_before = 0, cl_after = 0;
+	unsigned int	cl_before = gr_cinfo_base(gr_seg_cinfo(seg, gr_slot_before(gr_seg_first_slot(seg)))), 
+					cl_after  = gr_cinfo_base(gr_seg_cinfo(seg, gr_slot_after(gr_seg_first_slot(seg))));
 	float predicted_orign = 0.0;
 	for (const gr_slot * s = gr_seg_first_slot(seg); s != 0; s = gr_slot_next_in_segment(s))
 	{
