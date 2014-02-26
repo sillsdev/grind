@@ -266,7 +266,7 @@ bool run::render_run(IWaxGlyphs & glyphs) const
 		for (unsigned char n = cl.span()-1; n; --n, ++i)
 		{
 			glyphs.AddMappingWidth(0);
-			glyphs.AddMappingRange(i, gi, cl.size());
+			glyphs.AddMappingRange(i, gi, 0);
 		}
 		gi += cl.size();
 	}
