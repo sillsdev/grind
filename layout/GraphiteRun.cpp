@@ -56,14 +56,13 @@ namespace
 	glyf::justification_t justification(const gr_segment * const s, const gr_slot * const g)
 	{
 		if (gr_slot_attached_to(g))	// Attached to a parent must be a diacritic
-			return glyf::fixed;
+			return glyf::glyph;
 
 		const gr_char_info * const ci_before = gr_seg_cinfo(s, gr_slot_before(g));
 		const gr_char_info * const ci_after  = gr_seg_cinfo(s, gr_slot_after(g));
-		
 
 		if (gr_cinfo_before(ci_before) != gr_cinfo_after(ci_after)) // 1 -> many or many -> many either way only allow glyph stretching.
-			return glyf::glyph;
+			return glyf::letter;
 
 		if (ci_before == ci_after)  // We have a letter or a space
 			return u_isspace(gr_cinfo_unicode_char(ci_before)) ? glyf::space : glyf::letter;				
@@ -92,7 +91,6 @@ bool graphite_run::layout_span(TextIterator ti, size_t span)
 	gr_font *grfont = gr_make_font(ToFloat(font->GetEmBoxHeight()), _face);
 	if (grfont == nil)
 		return false;
-
 
 	// Make a segment
 	WideString	chars;
