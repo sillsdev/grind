@@ -112,6 +112,10 @@ bool run::fill(TextIterator & ti, TextIndex span)
 				back().break_weight() = cluster::breakweight::whitespace;
 				return true; 
 				break;
+			case kTextChar_HardSpace:
+				layout_span_with_spacing(start, ti, _drawing_style->GetSpaceWidth(), glyf::space);
+				back().break_weight() = cluster::breakweight::never;
+				break;
 			case kTextChar_FlushSpace:
 				layout_span_with_spacing(start, ti, _drawing_style->GetSpaceWidth(), glyf::fill); 
 				break;
