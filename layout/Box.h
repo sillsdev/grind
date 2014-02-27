@@ -106,11 +106,6 @@ PMReal glyf::depth() const throw() {
 }
 
 inline
-PMReal glyf::advance() const throw() {
-	return _pos.X() + _width;
-}
-
-inline
 void glyf::shift(const PMPoint & delta) throw()
 {
 	_pos += delta;

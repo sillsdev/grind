@@ -125,6 +125,7 @@ bool graphite_run::layout_span(TextIterator ti, size_t span)
 			// Open a fresh one.
 			cl = open_cluster();
 			cl_before = before;
+			predicted_orign = gr_slot_origin_X(s);
 		}
 		cl_after = std::max(after, cl_after);
 
@@ -132,7 +133,7 @@ bool graphite_run::layout_span(TextIterator ti, size_t span)
 		cl->add_glyf(glyf(gr_slot_gid(s), 
 						  justification(seg, s), 
 						  gr_slot_advance_X(s, 0, grfont), 
-						  gr_slot_advance_Y(s, 0, grfont), 0,
+						  _height, 0,
 						  PMPoint(gr_slot_origin_X(s)-predicted_orign, gr_slot_origin_Y(s))));
 
 		predicted_orign = gr_slot_origin_X(s) + gr_slot_advance_X(s, 0, grfont);

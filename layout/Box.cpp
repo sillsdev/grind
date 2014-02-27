@@ -35,6 +35,11 @@ THE SOFTWARE.
 // Project forward declarations
 using namespace nrsc;
 
+PMReal glyf::advance() const throw() {
+	return std::max(_pos.X() + _width, PMReal(0));
+}
+
+
 void cluster::add_glyf(const glyf &g)
 {
 	_height = std::max(g.height(), _height);
