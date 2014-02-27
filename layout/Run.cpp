@@ -263,12 +263,12 @@ bool run::render_run(IWaxGlyphs & glyphs) const
 		
 		glyphs.AddMappingWidth(cluster_advance);
 		glyphs.AddMappingRange(i++, gi, cl.size());
+		gi += cl.size();
 		for (unsigned char n = cl.span()-1; n; --n, ++i)
 		{
 			glyphs.AddMappingWidth(0);
 			glyphs.AddMappingRange(i, gi, 0);
 		}
-		gi += cl.size();
 	}
 
 	delete [] x_offs;
