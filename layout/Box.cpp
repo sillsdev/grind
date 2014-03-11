@@ -45,7 +45,7 @@ void cluster::add_glyf(const glyf &g)
 	_height = std::max(g.height(), _height);
 	_depth  = std::max(g.depth(), _depth);
 
-	_components.push_back(g);
+	push_back(g);
 }
 
 

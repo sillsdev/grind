@@ -151,18 +151,28 @@ void glyf::set_glue() throw()
 
 
 
-class cluster
+class cluster : private std::vector<glyf>
 {
 private:
-	typedef std::vector<glyf>	components_t;
+	typedef std::vector<glyf>	base_t;
 
 	PMReal			_height,
 					_depth;
-	components_t	_components;
 	unsigned char	_span;
 	int				_breakweight;
 
 public:
+	// Member types
+	typedef base_t::iterator				iterator;
+	typedef base_t::reverse_iterator		reverse_iterator;
+	typedef base_t::value_type				value_type;
+	typedef base_t::pointer					pointer;
+	typedef base_t::reference				reference;
+	typedef base_t::const_iterator			const_iterator;
+	typedef base_t::const_reverse_iterator	const_reverse_iterator;
+	typedef base_t::const_pointer			const_pointer;
+	typedef base_t::const_reference			const_reference;
+
 	struct breakweight { enum type { 
 		mandatory	= 0,
 		whitespace	= 10,
@@ -173,34 +183,31 @@ public:
 		never		= USHRT_MAX
 	}; };
 
-	typedef components_t::iterator		iterator;
-	typedef components_t::value_type	value_type;
-	typedef components_t::pointer		pointer;
-	typedef components_t::reference		reference;
-	typedef components_t::const_iterator	const_iterator;
-	typedef components_t::const_pointer		const_pointer;
-	typedef components_t::const_reference	const_reference;
-
+	// Constructor
 	cluster();
 
+	//Iterators
+	using base_t::begin;
+	using base_t::end;
+	using base_t::rbegin;
+	using base_t::rend;
+
+	// Capacity
+	using base_t::size;
+	size_t	span() const;
+
+	// Element access
+	using base_t::front;
+	using base_t::back;
+
+	// Modifiers
+	void			add_glyf(const glyf &);
+	void			add_chars(TextIndex n=1);
+
+	// Properties
 	PMReal			width() const;
 	PMReal			height() const;
 	PMReal			depth() const;
-
-	void			add_glyf(const glyf &);
-	void			add_chars(TextIndex n=1);
-	iterator		begin();
-	const_iterator	begin() const;
-	iterator		end();
-	const_iterator	end() const;
-
-	reference		front();
-	const_reference	front() const;
-	reference		back();
-	const_reference back() const;
-
-	size_t			size() const;
-	size_t			span() const;
 	int				break_weight() const;
 	int &			break_weight();
 };
@@ -212,7 +219,7 @@ cluster::cluster()
   _span(0),
   _breakweight(cluster::breakweight::clip)
 {
-	_components.reserve(1);
+	reserve(1);
 }
 
 inline
@@ -229,60 +236,6 @@ inline
 void cluster::add_chars(TextIndex n)
 {
 	_span += n;
-}
-
-inline
-cluster::iterator cluster::begin()
-{
-	return _components.begin();
-}
-
-inline
-cluster::const_iterator cluster::begin() const
-{
-	return _components.begin();
-}
-
-inline 
-cluster::iterator cluster::end()
-{
-	return _components.end();
-}
-
-inline 
-cluster::const_iterator cluster::end() const
-{
-	return _components.end();
-}
-
-inline
-cluster::reference cluster::front()
-{
-	return _components.front();
-}
-
-inline
-cluster::const_reference cluster::front() const
-{
-	return _components.front();
-}
-
-inline
-cluster::reference cluster::back()
-{
-	return _components.back();
-}
-
-inline
-cluster::const_reference cluster::back() const
-{
-	return _components.back();
-}
-
-inline 
-size_t cluster::size() const
-{
-	return _components.size();
 }
 
 inline 
