@@ -27,7 +27,7 @@ THE SOFTWARE.
 #include "VCPlugInHeaders.h"
 #include <IDrawingStyle.h>
 #include <IParcel.h>
-#include <IFontInstance.h>
+#include <IPMFont.h>
 #include <IGridRelatedStyle.h>
 #include <ITextParcelList.h>
 #include <IWaxLine.h>
@@ -44,20 +44,24 @@ using namespace nrsc;
 
 line_metrics & line_metrics::operator +=(const IDrawingStyle * const ds)
 {
-	InterfacePtr<IFontInstance> font = ds->QueryFontInstance(false);
+	// We use the an IPMFont and point size instead of an IFontInstance because
+	// the IFontInstance will transform all it's metrics through it's set matrix
+	// such as when horizontal or vertical scaling is used and we need unscaled values.
+	const PMReal point_sz = ds->GetPointSize();
+	InterfacePtr<IPMFont> font = ds->QueryFont();
 	if (font == nil)	return *this;
 
 	// Update tracked line metric values
 	leading		  = std::max(leading,		ds->GetLeading());
-	ascent		  = std::max(ascent,		font->GetAscent());
-	cap_height	  = std::max(cap_height,	font->GetCapHeight());
-	x_height	  = std::max(x_height,		font->GetXHeight());
-	em_box_height = std::max(em_box_height,	font->GetEmBoxHeight());
+	ascent		  = std::max(ascent,		font->GetAscent(point_sz));
+	cap_height	  = std::max(cap_height,	font->GetCapHeight(point_sz));
+	x_height	  = std::max(x_height,		font->GetXHeight(point_sz));
+	em_box_height = std::max(em_box_height,	font->GetEmBoxHeight(point_sz, false));
 	em_box_depth  = std::max(em_box_depth,  font->GetHorizEmBoxDepth());
 
 	// TODO: Enable if necessary.
 	//PMReal top, bottom;
-	//font->GetICFBoxInsets(top, bottom);
+	//font->GetICFBoxInsets(point_sz, top, bottom, false);
 	//icf_top_inset	 = std::max(icf_top_inset,	top);
 	//icf_bottom_inset = std::max(icf_bottom_inset, bottom);
 
