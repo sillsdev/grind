@@ -347,7 +347,7 @@ void run::calculate_stretch(stretch & s) const
 		for (cluster::const_iterator g = cl->begin(), g_e = cl->end(); g != g_e; ++g)
 		{
 			const glyf::justification_t level = g->justification();
-			const PMReal unit_width = level > glyf::glyph ? _drawing_style->GetSpaceWidth() : g->width();
+			const PMReal unit_width = g->width();
 
 			s[level].min += unit_width*js[level].min;
 			s[level].max += unit_width*js[level].max;
@@ -390,10 +390,14 @@ void run::apply_desired_widths()
 
 run::const_iterator run::find_break(PMReal desired) const
 {
-	// Walk forwards to find the point where a cluster crosses the desired width
+	InterfacePtr<IJustificationStyle>	js(_drawing_style, UseDefaultIID());
+
+	// Walk forwards to find the point where a cluster crosses the desired
+	//  width, take into account the altered leterspacing if any.
 	const_iterator			cl = begin();
 	const_iterator const	cl_e = end();
 	PMReal advance = 0;
+	desired += js->GetAlteredLetterspace(false);
 	for (; cl != cl_e; ++cl)
 	{
 		const PMReal advance_ = advance + cl->width();
@@ -425,6 +429,7 @@ PMReal run::width() const
 
 	return advance;
 }
+
 
 run * run::split(run::const_iterator position) 
 {
