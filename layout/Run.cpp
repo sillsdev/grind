@@ -295,9 +295,17 @@ IWaxRun * run::wax_run() const
 	InterfacePtr<IWaxRenderData> rd(wr, UseDefaultIID());
 	InterfacePtr<IWaxGlyphs>     glyphs(wr, UseDefaultIID());
 	if (rd == nil || glyphs == nil)	return nil;
+
 	_drawing_style->FillOutRenderData(rd, kFalse/*horizontal*/);
 	_drawing_style->AddAdornments(wr);
 	wr->AddRef();
+
+	// Apply x skew.
+	PMMatrix glyphs_mat;
+	PMPoint pc;
+	glyphs_mat = glyphs->GetAllGlyphsMatrix(&pc);
+	glyphs_mat.SkewTo(_drawing_style->GetSkewAngle());
+	glyphs->SetAllGlyphsMatrix(glyphs_mat, pc);
 
 	render_run(*glyphs);
 
