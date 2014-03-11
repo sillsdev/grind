@@ -449,3 +449,34 @@ run * run::split(run::const_iterator position)
 	return new_run;
 }
 
+
+void run::trim_trailing_whitespace(const PMReal right_margin)
+{
+	InterfacePtr<IJustificationStyle>	js(_drawing_style, UseDefaultIID());
+	const PMReal alt_ltr_spc = js->GetAlteredLetterspace(false);
+
+	// Assign any alterered letterspace on the last cluster to the next whitespace character
+	reverse_iterator cl = rbegin();
+	for (const reverse_iterator cl_e = rend(); cl != cl_e; ++cl)
+		if (cl->break_weight() > cluster::breakweight::whitespace) break;
+
+	// Trim the cluster
+	for (cluster::reverse_iterator g = cl->rbegin(); g != cl->rend(); ++g)
+	{
+		switch(g->justification())
+		{
+		case glyf::glyph:
+			g->shift(alt_ltr_spc);
+			break;
+		case glyf::letter:
+			g->kern(-alt_ltr_spc);
+			if (--cl != rend())
+				cl->front().kern(alt_ltr_spc);
+			return;
+			break;
+		default:
+			break;
+		}
+	}
+}
+

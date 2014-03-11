@@ -329,6 +329,8 @@ bool nrsc::rebuild_line(gr_face_cache & faces, const IParagraphComposer::Rebuild
 		line.push_back(t = new tile(PMRect(wl->GetXPosition(i), y_top, wl->GetXPosition(i) + wl->GetTargetWidth(i), y_bottom)));
 		t->fill_by_span(*scanner, faces, ti, wl->GetTextSpanInTile(i));
 
+		if (!t->empty())	t->back()->trim_trailing_whitespace(0);
+
 		tile_span = t->span();
 		if (tile_span != wl->GetTextSpanInTile(i)) return false;
 	}

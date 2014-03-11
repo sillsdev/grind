@@ -121,6 +121,7 @@ public:
 	void get_stretch_ratios(stretch &) const;
 	void calculate_stretch(stretch & s) const;
 	void apply_desired_widths();
+	void trim_trailing_whitespace(const PMReal rm);
 };
 
 
