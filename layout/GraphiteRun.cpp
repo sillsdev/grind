@@ -83,12 +83,8 @@ bool graphite_run::layout_span(TextIterator ti, size_t span)
 	if (span ==0)
 		return true;
 
-	InterfacePtr<IFontInstance>	font = _drawing_style->QueryFontInstance(kFalse);
-	if (font == nil)
-		return false;
-
 	// Make a graphite font object.
-	gr_font *grfont = gr_make_font(ToFloat(font->GetEmBoxHeight()), _face);
+	gr_font *grfont = gr_make_font(ToFloat(_drawing_style->GetEmSpaceWidth(false)), _face);
 	if (grfont == nil)
 		return false;
 
@@ -105,6 +101,7 @@ bool graphite_run::layout_span(TextIterator ti, size_t span)
 
 
 	// Add the glyphs with their natural widths
+	const PMReal	glyph_scale = _drawing_style->GetXScale();
 	cluster * cl = open_cluster();
 	unsigned int	cl_before = gr_cinfo_base(gr_seg_cinfo(seg, gr_slot_before(gr_seg_first_slot(seg)))), 
 					cl_after  = gr_cinfo_base(gr_seg_cinfo(seg, gr_slot_after(gr_seg_first_slot(seg))));
@@ -132,9 +129,9 @@ bool graphite_run::layout_span(TextIterator ti, size_t span)
 		// Add the glyph
 		cl->add_glyf(glyf(gr_slot_gid(s), 
 						  justification(seg, s), 
-						  gr_slot_advance_X(s, 0, grfont), 
+						  gr_slot_advance_X(s, 0, grfont) * glyph_scale, 
 						  _height, 0,
-						  PMPoint(gr_slot_origin_X(s)-predicted_orign, gr_slot_origin_Y(s))));
+						  PMPoint(glyph_scale*(gr_slot_origin_X(s)-predicted_orign), gr_slot_origin_Y(s))));
 
 		predicted_orign = gr_slot_origin_X(s) + gr_slot_advance_X(s, 0, grfont);
 	}

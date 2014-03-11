@@ -203,7 +203,7 @@ void run::add_letter(int glyph_id, PMReal width, cluster::breakweight::type bw, 
 		open_cluster();
 
 	cluster & cl = back();
-	cl.add_glyf(glyf(glyph_id, glyf::letter, width, _height, 0));
+	cl.add_glyf(glyf(glyph_id, to_cluster ? glyf::glyph : glyf::letter, width, _height, 0));
 	cl.add_chars();
 	cl.break_weight() = bw;
 	
@@ -220,6 +220,7 @@ bool run::joinable(const run & rhs) const
 run & run::join(run & rhs) 
 {
 	splice(end(), rhs);
+	_span += rhs._span;
 
 	return *this;
 }
@@ -342,6 +343,38 @@ void run::calculate_stretch(stretch & s) const
 
 			s[level].min += unit_width*js[level].min;
 			s[level].max += unit_width*js[level].max;
+		}
+	}
+}
+
+
+void run::apply_desired_widths()
+{
+	InterfacePtr<IJustificationStyle>	js(_drawing_style, UseDefaultIID());
+
+	const PMReal	space_width = _drawing_style->GetSpaceWidth(),
+					alt_ltr_spc	= js->GetAlteredLetterspace(false),
+					alt_wrd_spc	= js->GetAlteredWordspace() - space_width + alt_ltr_spc;
+
+	for (iterator cl = begin(), cl_e = end(); cl != cl_e; ++cl)
+	{
+		for (cluster::iterator g = cl->begin(), g_e = cl->end(); g != g_e; ++g)
+		{
+			switch (g->justification())
+			{
+			case glyf::letter:
+				g->kern(alt_ltr_spc);
+				break;
+			case glyf::space:
+				if (g->width() != space_width) break;
+				g->kern(alt_wrd_spc);
+				break;
+			case glyf::glyph:
+				g->shift(-alt_ltr_spc);
+				break;
+			default: 
+				break;
+			}
 		}
 	}
 }

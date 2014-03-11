@@ -69,6 +69,8 @@ public:
 	PMReal			depth() const throw();
 	PMReal			advance() const throw();
 	void			shift(const PMPoint & delta) throw();
+	void			shift(const PMReal & delta) throw();
+	void			kern(const PMReal & width) throw();
 	PMPoint		  & pos() throw();
 	const PMPoint & pos() const throw();
 	justification_t justification() const throw();
@@ -109,6 +111,18 @@ inline
 void glyf::shift(const PMPoint & delta) throw()
 {
 	_pos += delta;
+}
+
+inline
+void glyf::shift(const PMReal & delta) throw()
+{
+	_pos.X() += delta;
+}
+
+inline
+void glyf::kern(const PMReal & delta) throw()
+{
+	_width += delta;
 }
 
 inline
