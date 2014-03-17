@@ -362,7 +362,7 @@ void run::apply_desired_widths()
 
 	const PMReal	space_width = _drawing_style->GetSpaceWidth(),
 					alt_ltr_spc	= js->GetAlteredLetterspace(false),
-					alt_wrd_spc	= js->GetAlteredWordspace() - space_width + alt_ltr_spc;
+					alt_wrd_spc	= js->GetAlteredWordspace() - space_width;
 
 	for (iterator cl = begin(), cl_e = end(); cl != cl_e; ++cl)
 	{
@@ -370,12 +370,13 @@ void run::apply_desired_widths()
 		{
 			switch (g->justification())
 			{
+			case glyf::space:
+				g->kern(alt_ltr_spc + (g->width() == space_width ? alt_wrd_spc : 0));
+				break;
+			case glyf::fixed:
+				if (g->width() == 0) break;
 			case glyf::letter:
 				g->kern(alt_ltr_spc);
-				break;
-			case glyf::space:
-				if (g->width() != space_width) break;
-				g->kern(alt_wrd_spc);
 				break;
 			case glyf::glyph:
 				g->shift(-alt_ltr_spc);
