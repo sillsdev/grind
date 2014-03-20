@@ -49,14 +49,16 @@ using namespace nrsc;
 const textchar kTextChar_EnQuadSpace = 0x2000;
 
 run::run()
-: _drawing_style(nil),
+: _trailing_ws(end()),
+  _drawing_style(nil),
   _height(0),
   _span(0)
 {
 }
 
 run::run(IDrawingStyle * ds)
-: _drawing_style(ds),
+: _trailing_ws(end()),
+  _drawing_style(ds),
   _height(ds->GetLeading()),
   _span(0)
 {
@@ -96,7 +98,7 @@ bool run::fill(TextIterator & ti, TextIndex span)
 			case kTextChar_BreakRunInStyle:
 			case kTextChar_CR:
 			case kTextChar_SoftCR:
-				layout_span_with_spacing(start, ti, _drawing_style->GetSpaceWidth(), glyf::fill);
+				layout_span_with_spacing(start, ti, _drawing_style->GetSpaceWidth(), glyf::fixed);
 				back().break_weight() = cluster::breakweight::mandatory;
 				++ti; ++_span;
 				return true; 
@@ -121,10 +123,10 @@ bool run::fill(TextIterator & ti, TextIndex span)
 				break;
 			case kTextChar_EnQuadSpace:
 			case kTextChar_EnSpace:
-				layout_span_with_spacing(start, ti, _drawing_style->GetEnSpaceWidth(false), glyf::space);
+				layout_span_with_spacing(start, ti, _drawing_style->GetEnSpaceWidth(false), glyf::fixed);
 				break;
 			case kTextChar_EmSpace:
-				layout_span_with_spacing(start, ti, em_space_width, glyf::space);
+				layout_span_with_spacing(start, ti, em_space_width, glyf::fixed);
 				break;
 			case kTextChar_ThirdSpace:
 				layout_span_with_spacing(start, ti, em_space_width/3, glyf::fixed);
@@ -145,7 +147,7 @@ bool run::fill(TextIterator & ti, TextIndex span)
 				layout_span_with_spacing(start, ti, em_space_width/8, glyf::fixed);
 				break;
 			case kTextChar_HairSpace:
-				layout_span_with_spacing(start, ti, em_space_width/24, glyf::space);
+				layout_span_with_spacing(start, ti, em_space_width/24, glyf::fixed);
 				break;
 			case kTextChar_NarrowNoBreakSpace:
 				layout_span_with_spacing(start, ti, _drawing_style->GetSpaceWidth(), glyf::fixed);
@@ -156,6 +158,9 @@ bool run::fill(TextIterator & ti, TextIndex span)
 				break;
 			case kTextChar_ZeroWidthNonJoiner:
 			case kTextChar_ZeroWidthJoiner:
+				layout_span_with_spacing(start, ti, 0, glyf::glyph);
+				back().break_weight() = cluster::breakweight::never;
+				break;
 			case kTextChar_ZeroSpaceNoBreak:
 				layout_span_with_spacing(start, ti, 0, glyf::fixed);
 				back().break_weight() = cluster::breakweight::never;
@@ -318,39 +323,65 @@ void run::get_stretch_ratios(stretch & s) const
 	PMReal min,des,max;
 	InterfacePtr<IJustificationStyle>	js(_drawing_style, UseDefaultIID());
 
-	s[glyf::fixed].min = 0;
-	s[glyf::fixed].max = 0;
-
-	js->GetGlyphscale(&min, &des, &max);
-	s[glyf::glyph].min = 1-min;
-	s[glyf::glyph].max = max-1;
-
-	js->GetLetterspace(&min, &des, &max);
-	s[glyf::letter].min = 1-min;
-	s[glyf::letter].max = max-1;
+	s[glyf::fill].min = s[glyf::space].min;
+	s[glyf::fill].max = 1000000.0;
+	s[glyf::fill].num = 0;
 
 	js->GetWordspace(&min, &des, &max);
-	s[glyf::space].min = 1-min;
-	s[glyf::space].max = max-1;
-	s[glyf::fill].min = 1-min;
-	s[glyf::fill].max = 1000000.0;
+	s[glyf::space].min = des - min;
+	s[glyf::space].max = max - des;
+	s[glyf::space].num = 0;
+
+	js->GetLetterspace(&min, &des, &max);
+	s[glyf::letter].min = des - min;
+	s[glyf::letter].max = max - des;
+	s[glyf::letter].num = 0;
+
+	js->GetGlyphscale(&min, &des, &max);
+	s[glyf::glyph].min = des - min;
+	s[glyf::glyph].max = max - des;
+	s[glyf::glyph].num = 0;
+
+	s[glyf::fixed].min = 0;
+	s[glyf::fixed].max = 0;
+	s[glyf::fixed].num = 0;
 }
 
 
-void run::calculate_stretch(stretch & s) const
+void run::calculate_stretch(const stretch & js, stretch & s) const
 {
-	stretch js;
-	get_stretch_ratios(js);
+	const PMReal	space_width = _drawing_style->GetSpaceWidth();
 
-	for (const_iterator cl = begin(), cl_e = end(); cl != cl_e; ++cl)
+	for (const_iterator cl = begin(), cl_e = _trailing_ws; cl != cl_e; ++cl)
 	{
 		for (cluster::const_iterator g = cl->begin(), g_e = cl->end(); g != g_e; ++g)
 		{
 			const glyf::justification_t level = g->justification();
-			const PMReal unit_width = g->width();
 
-			s[level].min += unit_width*js[level].min;
-			s[level].max += unit_width*js[level].max;
+			switch(level)
+			{
+			case glyf::fill:
+				s[glyf::fill].min += space_width*js[glyf::fill].min;
+				s[glyf::fill].max += space_width*js[glyf::fill].max;
+				++s[glyf::fill].num;
+				break;
+			case glyf::space:
+				s[glyf::space].min += space_width*js[glyf::space].min;
+				s[glyf::space].max += space_width*js[glyf::space].max;
+				++s[glyf::space].num;
+			case glyf::letter:
+				s[glyf::letter].min += space_width*js[glyf::letter].min;
+				s[glyf::letter].max += space_width*js[glyf::letter].max;
+				++s[glyf::letter].num;
+			case glyf::glyph:
+				s[glyf::glyph].min += g->width()*js[glyf::glyph].min;
+				s[glyf::glyph].max += g->width()*js[glyf::glyph].max;
+				++s[glyf::glyph].num;
+				break;
+			case glyf::fixed:
+				++s[glyf::fixed].num;
+				break;
+			}
 		}
 	}
 }
@@ -359,31 +390,40 @@ void run::calculate_stretch(stretch & s) const
 void run::apply_desired_widths()
 {
 	InterfacePtr<IJustificationStyle>	js(_drawing_style, UseDefaultIID());
+	const PMReal	space_width = _drawing_style->GetSpaceWidth();
 
-	const PMReal	space_width = _drawing_style->GetSpaceWidth(),
-					alt_ltr_spc	= js->GetAlteredLetterspace(false),
-					alt_wrd_spc	= js->GetAlteredWordspace() - space_width;
+	adjust_widths(0, js->GetAlteredWordspace()-space_width, js->GetAlteredLetterspace(false), 0);
+}
 
-	for (iterator cl = begin(), cl_e = end(); cl != cl_e; ++cl)
+
+void run::adjust_widths(PMReal fill_space, PMReal word_space, PMReal letter_space, PMReal glyph_scale)
+{
+	for (iterator cl = begin(), cl_e = _trailing_ws; cl != cl_e; ++cl)
 	{
 		for (cluster::iterator g = cl->begin(), g_e = cl->end(); g != g_e; ++g)
 		{
 			switch (g->justification())
 			{
-			case glyf::space:
-				g->kern(alt_ltr_spc + (g->width() == space_width ? alt_wrd_spc : 0));
+			case glyf::fill:
+				g->kern(fill_space);
 				break;
-			case glyf::fixed:
-				if (g->width() == 0) break;
+			case glyf::space:
+				g->kern(letter_space + word_space);
+				break;
 			case glyf::letter:
-				g->kern(alt_ltr_spc);
+				g->kern(letter_space);
 				break;
 			case glyf::glyph:
-				g->shift(-alt_ltr_spc);
+				g->shift(-letter_space);
+				break;
+			case glyf::fixed:
+				if (g->width() > 0) g->kern(letter_space);
 				break;
 			default: 
 				break;
 			}
+
+			g->kern(glyph_scale*g->width());
 		}
 	}
 }
@@ -426,7 +466,7 @@ PMReal run::width() const
 {
 	PMReal advance = 0;
 
-	for (const_iterator cl = begin(), cl_e = end(); cl != cl_e; advance += cl->width(), ++cl);
+	for (const_iterator cl = begin(), cl_e = end(); cl != _trailing_ws; advance += cl->width(), ++cl);
 
 	return advance;
 }
@@ -451,33 +491,42 @@ run * run::split(run::const_iterator position)
 }
 
 
-void run::trim_trailing_whitespace(const PMReal right_margin)
+void run::trim_trailing_whitespace(const PMReal letter_space)
 {
-	InterfacePtr<IJustificationStyle>	js(_drawing_style, UseDefaultIID());
-	const PMReal alt_ltr_spc = js->GetAlteredLetterspace(false);
-
-	// Assign any alterered letterspace on the last cluster to the next whitespace character
-	reverse_iterator cl = rbegin();
-	for (const reverse_iterator cl_e = rend(); cl != cl_e; ++cl)
-		if (cl->break_weight() > cluster::breakweight::whitespace) break;
-
-	// Trim the cluster
-	for (cluster::reverse_iterator g = cl->rbegin(); g != cl->rend(); ++g)
+	if (_trailing_ws == end())
 	{
-		switch(g->justification())
+		// Find the last non-whitespace cluster
+		reverse_iterator	cl = rbegin();
+		for (const reverse_iterator cl_e = rend(); cl != cl_e; ++cl)
+			if (cl->break_weight() > cluster::breakweight::whitespace) break;
+
+		if (cl == rend())
 		{
-		case glyf::glyph:
-			g->shift(alt_ltr_spc);
-			break;
-		case glyf::letter:
-			g->kern(-alt_ltr_spc);
-			if (--cl != rend())
-				cl->front().kern(alt_ltr_spc);
+			_trailing_ws = begin();
 			return;
-			break;
-		default:
-			break;
 		}
+		_trailing_ws = cl.base();
 	}
+
+	// Re-assign any letterspace contributed whitespace in the final
+	// glyph to the adjacent trailing whitespace.
+	if (_trailing_ws != end())
+	{
+		iterator non_ws = _trailing_ws;
+		--non_ws;
+		non_ws->trim(letter_space);
+		_trailing_ws->front().kern(letter_space);
+	}
+}
+
+
+void run::fit_trailing_whitespace(const PMReal margin)
+{
+	const size_t ws_count = std::distance(_trailing_ws, end());
+
+	// Shrink the trailing whitespace to fit into the margin space
+	const PMReal trailing_ws = margin/ws_count;
+	for (iterator cl = _trailing_ws, cl_e = end(); cl != cl_e; ++cl)
+		cl->front().kern(std::min(trailing_ws - cl->front().width(), PMReal(0)));
 }
 

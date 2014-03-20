@@ -58,3 +58,23 @@ PMReal cluster::width() const throw()
 
 	return advance;
 }
+
+
+void cluster::trim(const PMReal alt_ltr_spc)
+{
+	for (cluster::reverse_iterator g = rbegin(); g != rend(); ++g)
+	{
+		switch(g->justification())
+		{
+		case glyf::glyph:
+			g->shift(alt_ltr_spc);
+			break;
+		case glyf::letter:
+			g->kern(-alt_ltr_spc);
+			return;
+			break;
+		default:
+			break;
+		}
+	}
+}

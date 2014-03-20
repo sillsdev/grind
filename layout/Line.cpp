@@ -28,6 +28,7 @@ THE SOFTWARE.
 #include <IComposeScanner.h>
 #include <ICompositionStyle.h>
 #include <IDrawingStyle.h>
+#include <IJustificationStyle.h>
 #include <IPMFont.h>
 #include <IWaxCollection.h>
 #include <IWaxLine.h>
@@ -140,41 +141,53 @@ void tile::break_into(tile & rest)
 
 void tile::justify()
 {
-	run::stretch js, s = {{0,0},{0,0},{0,0},{0,0}};
+	run::stretch js, s = {{0,0},{0,0},{0,0},{0,0},{0,0}};
+	front()->get_stretch_ratios(js);
+
+	// Calculate the stretch values for all the classes.
+	PMReal  width   = content_dimensions().X();
+	PMReal	stretch = _region.Width() - width;
+	PMReal  stretches[5] = {0,0,0,0,0};
 
 	// Collect the stretch
 	for (const_iterator r = begin(), r_e = end(); r != r_e; ++r)
-		(*r)->calculate_stretch(s);
+		(*r)->calculate_stretch(js, s);
 
-	// Calculate the stretch values for all the classes.
-	PMReal	  const width = content_dimensions().X();
-	PMReal			stretch = _region.Width() - width;
+	// Drop the last letter as we don't want add letterspace stretch to the
+	// last character on a line.
+	s[glyf::letter].max -= s[glyf::letter].max/s[glyf::letter].num;
+	s[glyf::letter].min -= s[glyf::letter].min/s[glyf::letter].num;
+	--s[glyf::letter].num;
+
 	if (stretch == 0)	return;
-
-	PMReal stretches[4] = {0,0,0,0};
-	for (int level = glyf::fill; level != glyf::fixed && stretch != 0; ++level)
+	if (stretch < 0)
 	{
-		PMReal const contrib = stretch < 0 ? std::max(s[level].min, stretch) : std::min(s[level].max, stretch);
-		stretches[level] = stretch/contrib;
-		stretch -= contrib;
+		for (int level = glyf::fill; level != glyf::fixed && stretch != 0; ++level)
+			stretch -= stretches[level] = std::max(s[level].min, stretch);
 	}
-	if (stretch != 0)
-		stretches[glyf::space] += stretch;
+	else
+	{
+		for (int level = glyf::fill; level != glyf::fixed && stretch != 0; ++level)
+			stretch -= stretches[level] = std::min(s[level].max, stretch);
 
-	// Apply each glyphs stretch level.
-	//for (iterator r = begin(), r_e = end(); r != r_e; ++r)
-	//{
-	//	(*r)->get_stretch_ratios(js);
+		// How to deal with emergency stretch
+		if (stretch > 0)
+			if (s[glyf::space].num > 0)				stretches[glyf::space]  += stretch;
+			else if (s[glyf::letter].num > 0)		stretches[glyf::letter] += stretch;
+			else return;
+	}
 
-	//	for (run::iterator cl = (*r)->begin(), cl_e = (*r)->end(); cl != cl_e; ++cl)
-	//	{
-	//		for (cluster::iterator c = (*cl)->begin(), c_e = (*cl)->end(); c != c_e; ++c)
-	//		{
-	//			const glyf & g = c->glyph;
-	//			g.kern() += g.width()*js[g.justification()]*stretches[g.justification()];
-	//		}
-	//	}
-	//}
+	stretches[glyf::fill]   /= s[glyf::fill].num;
+	stretches[glyf::space]  /= s[glyf::space].num;
+	stretches[glyf::letter] /= s[glyf::letter].num;
+	stretches[glyf::glyph]	= width/(width + stretches[glyf::glyph])-1;
+
+	// Apply stretch levels to each run.
+	for (iterator r = begin(), r_e = end(); r != r_e; ++r)
+		(*r)->adjust_widths(stretches[glyf::fill], stretches[glyf::space], stretches[glyf::letter], stretches[glyf::glyph]);
+
+	if (s[glyf::letter].num)
+		back()->trim_trailing_whitespace(stretches[glyf::letter]);
 }
 
 
@@ -182,6 +195,7 @@ run * tile::create_run(gr_face_cache &faces, IDrawingStyle * ds, PMReal & x, Tex
 {
 	InterfacePtr<IPMFont>			font = ds->QueryFont();
 	InterfacePtr<ICompositionStyle> cs(ds, UseDefaultIID());
+	PMRect mbox = font->GetEmBox();
 
 	if (ti.IsNull() || font == nil || cs == nil)
 		return nil;
@@ -269,7 +283,7 @@ IWaxLine * nrsc::compose_line(tiler & tile_manager, gr_face_cache & faces, IPara
 
 		// Flow text into any remaining tiles, (not the common case)
 		// The complicated looking body below gets the most recently added tile, then 
-		//  inserts the input tile at *t onto the end, passing it into break into.
+		//  inserts the input tile onto the end, passing it into break into.
 		while (++t != tiles.end())
 			line.back()->break_into(**line.insert(line.end(), new tile(*t)));
 		
@@ -314,11 +328,15 @@ IWaxLine * nrsc::compose_line(tiler & tile_manager, gr_face_cache & faces, IPara
 
 bool nrsc::rebuild_line(gr_face_cache & faces, const IParagraphComposer::RebuildHelper & helper)
 {
-	const IWaxLine	* wl = helper.GetWaxLine();
+	TextIndex	      ti = helper.GetTextIndex();
+	IWaxLine const 	* wl = helper.GetWaxLine();
 	IComposeScanner * scanner = helper.GetComposeScanner();
-	TextIndex	ti = helper.GetTextIndex();
+	IDrawingStyle   * para_style   = scanner->GetParagraphStyleAt(ti);
 	PMReal const	y_bottom = wl->GetYPosition(),
 					y_top = y_bottom - wl->GetYAdvance();
+	InterfacePtr<ICompositionStyle>		cs(para_style, UseDefaultIID());
+	InterfacePtr<IJustificationStyle>	js(para_style, UseDefaultIID());
+
 
 	// Rebuild the and refill tile list from the wax line.
 	line_t	line;
@@ -329,10 +347,32 @@ bool nrsc::rebuild_line(gr_face_cache & faces, const IParagraphComposer::Rebuild
 		line.push_back(t = new tile(PMRect(wl->GetXPosition(i), y_top, wl->GetXPosition(i) + wl->GetTargetWidth(i), y_bottom)));
 		t->fill_by_span(*scanner, faces, ti, wl->GetTextSpanInTile(i));
 
-		if (!t->empty())	t->back()->trim_trailing_whitespace(0);
-
 		tile_span = t->span();
 		if (tile_span != wl->GetTextSpanInTile(i)) return false;
+
+		if (t->empty()) continue;
+
+		run & last_run = *t->back();
+
+		last_run.trim_trailing_whitespace(js->GetAlteredLetterspace(false));
+
+		switch (cs->GetParagraphAlignment())
+		{
+		case ICompositionStyle::kTextAlignJustifyFull:
+		case ICompositionStyle::kTextAlignJustifyLeft:
+		case ICompositionStyle::kTextAlignJustifyCenter:
+		case ICompositionStyle::kTextAlignJustifyRight:
+			t->justify();
+			break;
+		case ICompositionStyle::kTextAlignLeft:
+		case ICompositionStyle::kTextAlignCenter:
+		case ICompositionStyle::kTextAlignRight:
+		case ICompositionStyle::kTextAlignToBinding:
+		case ICompositionStyle::kTextAlignLastValue:
+		default:	
+			break;
+		}
+		last_run.fit_trailing_whitespace(t->dimensions().X() - t->content_dimensions().X());
 	}
 
 	if (line.size() == 0)

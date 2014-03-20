@@ -56,8 +56,10 @@ class run : protected std::list<cluster>
 	void run::layout_span_with_spacing(TextIterator &, const TextIterator &, PMReal, glyf::justification_t);
 	size_t num_glyphs() const;
 
+	base_t::iterator _trailing_ws;
+
 public:
-	typedef struct { PMReal min, max; }	stretch[5];
+	typedef struct { PMReal min, max; TextIndex num; }	stretch[5];
 
 protected:
 	run();
@@ -119,9 +121,12 @@ public:
 	IDrawingStyle * get_style() const;
 
 	void get_stretch_ratios(stretch &) const;
-	void calculate_stretch(stretch & s) const;
+	void calculate_stretch(const stretch & js, stretch & s) const;
 	void apply_desired_widths();
-	void trim_trailing_whitespace(const PMReal rm);
+	void adjust_widths(PMReal fill_space, PMReal word_space, PMReal letter_space, PMReal glyph_scale);
+	void trim_trailing_whitespace(const PMReal letter_space);
+	void fit_trailing_whitespace(const PMReal margin);
+
 };
 
 

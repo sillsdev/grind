@@ -50,7 +50,7 @@ character kerning concept.
 class glyf 
 {
 public:
-	enum justification_t		{fixed, glyph, letter, space, fill};
+	enum justification_t		{fill, space, letter, glyph, fixed};
 
 private:
 	PMReal			_width,
@@ -201,8 +201,11 @@ public:
 	using base_t::back;
 
 	// Modifiers
-	void			add_glyf(const glyf &);
-	void			add_chars(TextIndex n=1);
+	void	add_glyf(const glyf &);
+	void	add_chars(TextIndex n=1);
+
+	// Operations
+	void trim(const PMReal ws);
 
 	// Properties
 	PMReal			width() const;
