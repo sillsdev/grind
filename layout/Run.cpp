@@ -50,6 +50,7 @@ const textchar kTextChar_EnQuadSpace = 0x2000;
 
 run::run()
 : _trailing_ws(end()),
+  _extra_scale(0),
   _drawing_style(nil),
   _height(0),
   _span(0)
@@ -58,6 +59,7 @@ run::run()
 
 run::run(IDrawingStyle * ds)
 : _trailing_ws(end()),
+  _extra_scale(0),
   _drawing_style(ds),
   _height(ds->GetLeading()),
   _span(0)
@@ -310,6 +312,7 @@ IWaxRun * run::wax_run() const
 	PMPoint pc;
 	glyphs_mat = glyphs->GetAllGlyphsMatrix(&pc);
 	glyphs_mat.SkewTo(_drawing_style->GetSkewAngle());
+	glyphs_mat.Scale(1+_extra_scale, 1.0);
 	glyphs->SetAllGlyphsMatrix(glyphs_mat, pc);
 
 	render_run(*glyphs);
@@ -426,6 +429,8 @@ void run::adjust_widths(PMReal fill_space, PMReal word_space, PMReal letter_spac
 			g->kern(glyph_scale*g->width());
 		}
 	}
+
+	_extra_scale = glyph_scale;
 }
 
 

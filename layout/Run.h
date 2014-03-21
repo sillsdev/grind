@@ -56,7 +56,8 @@ class run : protected std::list<cluster>
 	void run::layout_span_with_spacing(TextIterator &, const TextIterator &, PMReal, glyf::justification_t);
 	size_t num_glyphs() const;
 
-	base_t::iterator _trailing_ws;
+	base_t::iterator	_trailing_ws;
+	PMReal				_extra_scale;
 
 public:
 	typedef struct { PMReal min, max; TextIndex num; }	stretch[5];
