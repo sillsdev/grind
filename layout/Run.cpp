@@ -377,8 +377,8 @@ void run::calculate_stretch(const stretch & js, stretch & s) const
 				s[glyf::letter].max += space_width*js[glyf::letter].max;
 				++s[glyf::letter].num;
 			case glyf::glyph:
-				s[glyf::glyph].min += g->width()*js[glyf::glyph].min;
-				s[glyf::glyph].max += g->width()*js[glyf::glyph].max;
+				s[glyf::glyph].min += g->advance()*js[glyf::glyph].min;
+				s[glyf::glyph].max += g->advance()*js[glyf::glyph].max;
 				++s[glyf::glyph].num;
 				break;
 			case glyf::fixed:
@@ -405,6 +405,9 @@ void run::adjust_widths(PMReal fill_space, PMReal word_space, PMReal letter_spac
 	{
 		for (cluster::iterator g = cl->begin(), g_e = cl->end(); g != g_e; ++g)
 		{
+			g->kern(glyph_scale*g->width());
+			g->shift(glyph_scale*g->pos().X());
+
 			switch (g->justification())
 			{
 			case glyf::fill:
@@ -425,8 +428,6 @@ void run::adjust_widths(PMReal fill_space, PMReal word_space, PMReal letter_spac
 			default: 
 				break;
 			}
-
-			g->kern(glyph_scale*g->width());
 		}
 	}
 
