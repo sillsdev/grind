@@ -180,7 +180,7 @@ void tile::justify()
 	stretches[glyf::fill]   /= s[glyf::fill].num;
 	stretches[glyf::space]  /= s[glyf::space].num;
 	stretches[glyf::letter] /= s[glyf::letter].num;
-	stretches[glyf::glyph]	= width/(width + stretches[glyf::glyph])-1;
+	stretches[glyf::glyph]	/= width;
 
 	// Apply stretch levels to each run.
 	for (iterator r = begin(), r_e = end(); r != r_e; ++r)
