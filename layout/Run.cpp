@@ -442,7 +442,7 @@ run::const_iterator run::find_break(PMReal desired) const
 	for (; cl != cl_e; ++cl)
 	{
 		const PMReal advance_ = advance + cl->width();
-		if (cl->break_weight() > cluster::breakweight::whitespace && advance_ > desired)	break;
+		if (cl->break_weight() > cluster::breakweight::word && advance_ > desired)	break;
 		advance = advance_;
 	}
 	if (cl == cl_e)		return cl_e;
@@ -498,7 +498,7 @@ void run::trim_trailing_whitespace(const PMReal letter_space)
 		// Find the last non-whitespace cluster
 		reverse_iterator	cl = rbegin();
 		for (const reverse_iterator cl_e = rend(); cl != cl_e; ++cl)
-			if (cl->break_weight() > cluster::breakweight::whitespace) break;
+			if (cl->break_weight() > cluster::breakweight::word) break;
 
 		if (cl == rend())
 		{
