@@ -50,7 +50,7 @@ character kerning concept.
 class glyf 
 {
 public:
-	enum justification_t		{fill, space, letter, glyph, fixed};
+	enum justification_t		{fill, space, letter, glyph, fixed, tab};
 
 private:
 	PMReal			_width,

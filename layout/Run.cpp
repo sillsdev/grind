@@ -100,14 +100,13 @@ bool run::fill(TextIterator & ti, TextIndex span)
 			case kTextChar_BreakRunInStyle:
 			case kTextChar_CR:
 			case kTextChar_SoftCR:
-				layout_span_with_spacing(start, ti, _drawing_style->GetSpaceWidth(), glyf::fixed);
+				layout_span_with_spacing(start, ti, _drawing_style->GetSpaceWidth(), glyf::space);
 				back().break_weight() = cluster::breakweight::mandatory;
 				++ti; ++_span;
 				return true; 
 				break;
 			case kTextChar_Tab:
-				layout_span(start, ti - start);
-				return true; 
+				layout_span_with_spacing(start, ti, _drawing_style->GetSpaceWidth(), glyf::space); 
 				break;
 			case kTextChar_Table:				
 			case kTextChar_TableContinued:
@@ -387,6 +386,18 @@ void run::calculate_stretch(const stretch & js, stretch & s) const
 			}
 		}
 	}
+
+	for (const_iterator cl = _trailing_ws, cl_e = end(); cl != cl_e; ++cl)
+	{
+		for (cluster::const_iterator g = cl->begin(), g_e = cl->end(); g != g_e; ++g)
+		{
+			if (g->justification() != glyf::fill) continue;
+
+			s[glyf::fill].min += space_width*js[glyf::fill].min;
+			s[glyf::fill].max += space_width*js[glyf::fill].max;
+			++s[glyf::fill].num;
+		}
+	}
 }
 
 
@@ -428,6 +439,16 @@ void run::adjust_widths(PMReal fill_space, PMReal word_space, PMReal letter_spac
 			default: 
 				break;
 			}
+		}
+	}
+
+	for (iterator cl = _trailing_ws, cl_e = end(); cl != cl_e; ++cl)
+	{
+		for (cluster::iterator g = cl->begin(), g_e = cl->end(); g != g_e; ++g)
+		{
+			if (g->justification() != glyf::fill) continue;
+
+			g->kern(fill_space);
 		}
 	}
 

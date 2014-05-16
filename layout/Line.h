@@ -37,7 +37,9 @@ THE SOFTWARE.
 class PMReal;
 // InDesign interfaces
 class IComposeScanner;
+class ICompositionStyle;
 class IDrawingStyle;
+class IJustificationStyle;
 class IWaxLine;
 // Graphite forward delcarations
 
@@ -60,7 +62,7 @@ class tile : private std::list<run*>
 	tile & operator = (const tile &);
 
 
-	static run * create_run(gr_face_cache & faces, IDrawingStyle * ds, PMReal & x, TextIterator & ti, TextIndex span);
+	static run    * create_run(gr_face_cache & faces, IDrawingStyle * ds, PMReal & x, TextIterator & ti, TextIndex span);
 
 public:
 	tile(const PMRect & region=PMRect());
@@ -98,6 +100,7 @@ public:
 
 	// Operations
 	void	justify();
+	PMReal	align_text(IJustificationStyle * js, ICompositionStyle *);
 	void	break_into(tile &);
 	void	update_line_metrics(line_metrics &) const;
 };

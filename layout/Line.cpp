@@ -191,6 +191,77 @@ void tile::justify()
 }
 
 
+PMReal tile::align_text(IJustificationStyle * js, ICompositionStyle * cs)
+{
+		if (empty()) return 0;
+
+		run & last_run = *back();
+		const bool	last_line = last_run.back().break_weight() == cluster::breakweight::mandatory;
+
+		last_run.trim_trailing_whitespace(js->GetAlteredLetterspace(false));
+	
+		PMReal	alignment_offset = 0,
+				line_white_space = dimensions().X() - content_dimensions().X();
+		switch (cs->GetParagraphAlignment())
+		{
+		case ICompositionStyle::kTextAlignJustifyFull:
+			justify();
+			line_white_space = 0;
+			break;
+		case ICompositionStyle::kTextAlignJustifyLeft:
+			if (!last_line)
+			{
+				justify();
+				line_white_space = 0;
+			}
+			break;
+		case ICompositionStyle::kTextAlignJustifyCenter:
+			if (!last_line)
+			{
+				justify();
+				line_white_space = 0;
+			}
+			else
+			{
+				line_white_space /= 2;
+				alignment_offset = line_white_space;
+			}
+			break;
+		case ICompositionStyle::kTextAlignJustifyRight:
+			if (!last_line)
+			{
+				justify();
+				line_white_space = 0;
+			}
+			else
+			{
+				alignment_offset = line_white_space;
+				line_white_space = 0;
+			}
+			break;
+		case ICompositionStyle::kTextAlignLeft:
+			break;
+		case ICompositionStyle::kTextAlignCenter:
+			line_white_space /= 2;
+			alignment_offset = line_white_space;
+			break;
+		case ICompositionStyle::kTextAlignRight:
+			alignment_offset = line_white_space;
+			line_white_space = 0;
+			break;
+		case ICompositionStyle::kTextAlignToBinding:
+			break;
+		case ICompositionStyle::kTextAlignAwayBinding:
+			break;
+		default:	
+			break;
+		}
+		last_run.fit_trailing_whitespace(line_white_space);
+
+		return alignment_offset;
+}
+
+
 run * tile::create_run(gr_face_cache &faces, IDrawingStyle * ds, PMReal & x, TextIterator & ti, TextIndex span)
 {
 	InterfacePtr<IPMFont>			font = ds->QueryFont();
@@ -341,6 +412,7 @@ bool nrsc::rebuild_line(gr_face_cache & faces, const IParagraphComposer::Rebuild
 	// Rebuild the and refill tile list from the wax line.
 	line_t	line;
 	int tile_span = 0;
+	PMReal alignment_offset = 0;
 	for (int i=0, n_tiles = wl->GetNumberOfTiles(); i != n_tiles; ++i, ti += tile_span)
 	{
 		tile * t;
@@ -350,29 +422,7 @@ bool nrsc::rebuild_line(gr_face_cache & faces, const IParagraphComposer::Rebuild
 		tile_span = t->span();
 		if (tile_span != wl->GetTextSpanInTile(i)) return false;
 
-		if (t->empty()) continue;
-
-		run & last_run = *t->back();
-
-		last_run.trim_trailing_whitespace(js->GetAlteredLetterspace(false));
-
-		switch (cs->GetParagraphAlignment())
-		{
-		case ICompositionStyle::kTextAlignJustifyFull:
-		case ICompositionStyle::kTextAlignJustifyLeft:
-		case ICompositionStyle::kTextAlignJustifyCenter:
-		case ICompositionStyle::kTextAlignJustifyRight:
-			t->justify();
-			break;
-		case ICompositionStyle::kTextAlignLeft:
-		case ICompositionStyle::kTextAlignCenter:
-		case ICompositionStyle::kTextAlignRight:
-		case ICompositionStyle::kTextAlignToBinding:
-		case ICompositionStyle::kTextAlignLastValue:
-		default:	
-			break;
-		}
-		last_run.fit_trailing_whitespace(t->dimensions().X() - t->content_dimensions().X());
+		alignment_offset = t->align_text(js, cs);
 	}
 
 	if (line.size() == 0)
@@ -385,7 +435,7 @@ bool nrsc::rebuild_line(gr_face_cache & faces, const IParagraphComposer::Rebuild
 	// Create the wax runs
 	for (line_t::iterator t = line.begin(), t_e = line.end(); t != t_e; ++t)
 	{
-		PMReal x = (*t)->position().X() - wl->GetXPosition();
+		PMReal x = (*t)->position().X() - wl->GetXPosition() + alignment_offset;
 
 		for (tile::iterator r = (*t)->begin(), r_e = (*t)->end(); r != r_e; ++r)
 		{
