@@ -106,7 +106,7 @@ bool run::fill(TextIterator & ti, TextIndex span)
 				return true; 
 				break;
 			case kTextChar_Tab:
-				layout_span_with_spacing(start, ti, _drawing_style->GetSpaceWidth(), glyf::space); 
+				layout_span_with_spacing(start, ti, _drawing_style->GetSpaceWidth(), glyf::tab); 
 				break;
 			case kTextChar_Table:				
 			case kTextChar_TableContinued:

@@ -93,6 +93,8 @@ public:
 	//Iterators
 	using base_t::begin;
 	using base_t::end;
+	iterator		trailing_whitespace();
+	const_iterator	trailing_whitespace() const;
 
 	// Capacity
 	using base_t::empty;
@@ -106,7 +108,7 @@ public:
 	// Modifiers
 	using base_t::clear;
 	pointer	open_cluster();
-	void		close_cluster(const_pointer);
+	void	close_cluster(const_pointer);
 	run * split(const_iterator position);
 
 	// Operations
@@ -163,5 +165,16 @@ void run::close_cluster(run::const_pointer cl)
 	_height = std::max(cl->height() + cl->depth(), _height);
 }
 
+inline
+run::iterator run::trailing_whitespace()
+{
+	return _trailing_ws;
+}
+
+inline
+run::const_iterator run::trailing_whitespace() const
+{
+	return _trailing_ws;
+}
 
 } // end of namespace nrsc

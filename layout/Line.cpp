@@ -28,6 +28,7 @@ THE SOFTWARE.
 #include <IComposeScanner.h>
 #include <ICompositionStyle.h>
 #include <IDrawingStyle.h>
+#include <IFontInstance.h>
 #include <IJustificationStyle.h>
 #include <IPMFont.h>
 #include <IWaxCollection.h>
@@ -191,74 +192,161 @@ void tile::justify()
 }
 
 
+
+namespace 
+{
+
+inline 
+bool is_glyph(const int gid, const cluster & cl)
+{
+	return cl.size() == 1 && cl.front().id() == gid;
+}
+
+inline
+bool is_tab(const cluster & cl)
+{
+	return cl.size() == 1 && cl.front().justification() == glyf::tab;
+}
+
+inline
+PMReal process_tab(run::iterator tab, const PMReal pos, const TabStop & ts, const PMReal width, const PMReal align_width)
+{
+	PMReal tab_width = ts.GetPosition() - pos;
+			
+	if (tab_width > 0.0)
+	{
+		switch (ts.GetAlignment())
+		{
+		case TabStop::kTabAlignLeft:	break;
+		case TabStop::kTabAlignCenter:	tab_width -= std::min(width/2, tab_width);		break;
+		case TabStop::kTabAlignRight:	tab_width -= std::min(width, tab_width);		break;
+		case TabStop::kTabAlignChar:	tab_width -= std::min(std::min(align_width, width), tab_width);	break;
+		}
+		glyf & tg = tab->front();
+		tg.kern(tab_width - tg.width());
+	}
+
+	return tab_width;
+}
+
+}
+
+
+
+void tile::apply_tab_widths(ICompositionStyle * cs)
+{
+	PMReal	pos = position().X(),
+			max_pos = pos + dimensions().X();
+	PMReal	width = 0,
+		align_width = std::numeric_limits<float>::max();
+
+	run::iterator	tab;
+	TabStop			ts;
+	ts.SetPosition(pos);
+
+	for (iterator r = begin(), r_e = end(); r != r_e && pos < max_pos; ++r)
+	{
+		// Get this runs font
+		InterfacePtr<IFontInstance>	font = (*r)->get_style()->QueryFontInstance(kFalse);
+		Text::GlyphID target = font->GetGlyphID(ts.GetAlignToChar().GetValue());
+			
+		// Find a tab
+		run::iterator		cl = (*r)->begin();
+		run::iterator const cl_e = (*r)->trailing_whitespace();
+
+		do
+		{
+			for (; cl != cl_e && !is_tab(*cl); width += cl->width(), ++cl)
+			{
+				if (width < align_width && is_glyph(target, *cl))
+					align_width = width;
+			}
+			if (cl == cl_e) break;
+
+			width += process_tab(tab, pos, ts, width, align_width);
+
+			ts = cs->GetTabStopAfter(pos + width);
+			tab = cl++;
+			pos += width;
+			width = 0;
+			align_width = std::numeric_limits<float>::max();
+		} while (cl != cl_e);
+	}
+	// End of line is an implicit tab stop
+	process_tab(tab, pos, ts, width, align_width);
+}
+
+
 PMReal tile::align_text(IJustificationStyle * js, ICompositionStyle * cs)
 {
-		if (empty()) return 0;
+	if (empty()) return 0;
 
-		run & last_run = *back();
-		const bool	last_line = last_run.back().break_weight() == cluster::breakweight::mandatory;
+	run & last_run = *back();
+	const bool	last_line = last_run.back().break_weight() == cluster::breakweight::mandatory;
 
-		last_run.trim_trailing_whitespace(js->GetAlteredLetterspace(false));
-	
-		PMReal	alignment_offset = 0,
-				line_white_space = dimensions().X() - content_dimensions().X();
-		switch (cs->GetParagraphAlignment())
+	last_run.trim_trailing_whitespace(js->GetAlteredLetterspace(false));
+
+	apply_tab_widths(cs);
+
+	PMReal	alignment_offset = 0,
+			line_white_space = dimensions().X() - content_dimensions().X();
+	switch (cs->GetParagraphAlignment())
+	{
+	case ICompositionStyle::kTextAlignJustifyFull:
+		justify();
+		line_white_space = 0;
+		break;
+	case ICompositionStyle::kTextAlignJustifyLeft:
+		if (!last_line)
 		{
-		case ICompositionStyle::kTextAlignJustifyFull:
 			justify();
 			line_white_space = 0;
-			break;
-		case ICompositionStyle::kTextAlignJustifyLeft:
-			if (!last_line)
-			{
-				justify();
-				line_white_space = 0;
-			}
-			break;
-		case ICompositionStyle::kTextAlignJustifyCenter:
-			if (!last_line)
-			{
-				justify();
-				line_white_space = 0;
-			}
-			else
-			{
-				line_white_space /= 2;
-				alignment_offset = line_white_space;
-			}
-			break;
-		case ICompositionStyle::kTextAlignJustifyRight:
-			if (!last_line)
-			{
-				justify();
-				line_white_space = 0;
-			}
-			else
-			{
-				alignment_offset = line_white_space;
-				line_white_space = 0;
-			}
-			break;
-		case ICompositionStyle::kTextAlignLeft:
-			break;
-		case ICompositionStyle::kTextAlignCenter:
+		}
+		break;
+	case ICompositionStyle::kTextAlignJustifyCenter:
+		if (!last_line)
+		{
+			justify();
+			line_white_space = 0;
+		}
+		else
+		{
 			line_white_space /= 2;
 			alignment_offset = line_white_space;
-			break;
-		case ICompositionStyle::kTextAlignRight:
+		}
+		break;
+	case ICompositionStyle::kTextAlignJustifyRight:
+		if (!last_line)
+		{
+			justify();
+			line_white_space = 0;
+		}
+		else
+		{
 			alignment_offset = line_white_space;
 			line_white_space = 0;
-			break;
-		case ICompositionStyle::kTextAlignToBinding:
-			break;
-		case ICompositionStyle::kTextAlignAwayBinding:
-			break;
-		default:	
-			break;
 		}
-		last_run.fit_trailing_whitespace(line_white_space);
+		break;
+	case ICompositionStyle::kTextAlignLeft:
+		break;
+	case ICompositionStyle::kTextAlignCenter:
+		line_white_space /= 2;
+		alignment_offset = line_white_space;
+		break;
+	case ICompositionStyle::kTextAlignRight:
+		alignment_offset = line_white_space;
+		line_white_space = 0;
+		break;
+	case ICompositionStyle::kTextAlignToBinding:
+		break;
+	case ICompositionStyle::kTextAlignAwayBinding:
+		break;
+	default:	
+		break;
+	}
+	last_run.fit_trailing_whitespace(line_white_space);
 
-		return alignment_offset;
+	return alignment_offset;
 }
 
 
@@ -332,6 +420,7 @@ IWaxLine * nrsc::compose_line(tiler & tile_manager, gr_face_cache & faces, IPara
 {
 	IComposeScanner	* scanner = helper.GetComposeScanner();
 	IDrawingStyle	* ds = scanner->GetCompleteStyleAt(ti);
+	InterfacePtr<ICompositionStyle>		cs(ds, UseDefaultIID());
 	const bool	first_line = ti == helper.GetParagraphStart();
 	line_t			line;
 	line_metrics	lm(ds);
@@ -354,12 +443,17 @@ IWaxLine * nrsc::compose_line(tiler & tile_manager, gr_face_cache & faces, IPara
 
 		// Flow text into any remaining tiles, (not the common case)
 		// The complicated looking body below gets the most recently added tile, then 
-		//  inserts the input tile onto the end, passing it into break into.
+		//  inserts the input tile onto the end, passing it into break_into.
 		while (++t != tiles.end())
-			line.back()->break_into(**line.insert(line.end(), new tile(*t)));
+		{
+			tile * & last = line.back();
+			last->apply_tab_widths(cs);
+			last->break_into(**line.insert(line.end(), new tile(*t)));
+		}
 		
 		// Collect any overset text for this line into a run off tile so the actual 
 		// tiles are correctly set.
+		line.back()->apply_tab_widths(cs);
 		tile runoff;
 		line.back()->break_into(runoff);
 
