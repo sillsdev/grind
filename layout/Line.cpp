@@ -29,7 +29,9 @@ THE SOFTWARE.
 #include <ICompositionStyle.h>
 #include <IDrawingStyle.h>
 #include <IFontInstance.h>
+#include <IHierarchy.h>
 #include <IJustificationStyle.h>
+#include <ILayoutUtils.h>
 #include <IPMFont.h>
 #include <IWaxCollection.h>
 #include <IWaxLine.h>
@@ -278,7 +280,15 @@ void tile::apply_tab_widths(ICompositionStyle * cs)
 }
 
 
-PMReal tile::align_text(IJustificationStyle * js, ICompositionStyle * cs)
+PageType get_page_type(const IParagraphComposer::RebuildHelper & helper)
+{
+	InterfacePtr<IHierarchy> hierarchy(helper.GetDataBase(), helper.GetParcelFrameUID(), UseDefaultIID());
+	return Utils<ILayoutUtils>()->GetPageType(UIDRef(helper.GetDataBase(),
+													 Utils<ILayoutUtils>()->GetOwnerPageUID(hierarchy)));
+}
+
+
+PMReal tile::align_text(const IParagraphComposer::RebuildHelper & helper, IJustificationStyle * js, ICompositionStyle * cs)
 {
 	if (empty()) return 0;
 
@@ -339,8 +349,20 @@ PMReal tile::align_text(IJustificationStyle * js, ICompositionStyle * cs)
 		line_white_space = 0;
 		break;
 	case ICompositionStyle::kTextAlignToBinding:
+		switch(get_page_type(helper))
+		{
+		case kLeftPage:		alignment_offset = line_white_space; line_white_space = 0; break;
+		case kUnisexPage:	break;
+		case kRightPage:	break;
+		}
 		break;
 	case ICompositionStyle::kTextAlignAwayBinding:
+		switch(get_page_type(helper))
+		{
+		case kLeftPage:		break;
+		case kUnisexPage:	break;
+		case kRightPage:	alignment_offset = line_white_space; line_white_space = 0; break;
+		}
 		break;
 	default:	
 		break;
@@ -491,7 +513,6 @@ IWaxLine * nrsc::compose_line(tiler & tile_manager, gr_face_cache & faces, IPara
 	return wl;
 }
 
-
 bool nrsc::rebuild_line(gr_face_cache & faces, const IParagraphComposer::RebuildHelper & helper)
 {
 	TextIndex	      ti = helper.GetTextIndex();
@@ -517,7 +538,7 @@ bool nrsc::rebuild_line(gr_face_cache & faces, const IParagraphComposer::Rebuild
 		tile_span = t->span();
 		if (tile_span != wl->GetTextSpanInTile(i)) return false;
 
-		alignment_offset = t->align_text(js, cs);
+		alignment_offset = t->align_text(helper, js, cs);
 	}
 
 	if (line.size() == 0)
