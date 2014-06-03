@@ -272,6 +272,7 @@ void tile::apply_tab_widths(ICompositionStyle * cs)
 			align_width = std::numeric_limits<float>::max();
 		} while (cl != cl_e);
 	}
+
 	// End of line is an implicit tab stop
 	process_tab(tab, pos, ts, width, align_width);
 }

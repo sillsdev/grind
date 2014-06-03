@@ -100,7 +100,7 @@ public:
 
 	// Operations
 	void	justify();
-	void	apply_tab_widths(ICompositionStyle *);
+	void	tab_natural_widths(ICompositionStyle *);
 	PMReal	align_text(IJustificationStyle * js, ICompositionStyle *);
 	void	break_into(tile &);
 	void	update_line_metrics(line_metrics &) const;
