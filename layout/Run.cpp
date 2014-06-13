@@ -459,6 +459,10 @@ void run::adjust_widths(PMReal fill_space, PMReal word_space, PMReal letter_spac
 run::const_iterator run::find_break(PMReal desired) const
 {
 	InterfacePtr<IJustificationStyle>	js(_drawing_style, UseDefaultIID());
+	InterfacePtr<ICompositionStyle>		cs(_drawing_style, UseDefaultIID());
+
+	if (cs->GetNoBreak())	
+		return begin();
 
 	// Walk forwards to find the point where a cluster crosses the desired
 	//  width, take into account the altered leterspacing if any.

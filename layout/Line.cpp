@@ -125,6 +125,8 @@ void tile::break_into(tile & rest)
 	iterator r = begin(), r_e = end();
 	PMReal		  advance = 0;
 	PMReal const desired = _region.Width();
+
+	// Find the run which stradles the desired with boundry.
 	for (; r != r_e; ++r)
 	{
 		PMReal const advance_ = advance + (*r)->width();
@@ -133,12 +135,19 @@ void tile::break_into(tile & rest)
 	}
 	if (r == r_e)	return;
 
-	run * const overset = *r;
-	run::const_iterator cl = overset->find_break(desired - advance);
-	if (cl != overset->end())
-		rest.push_back(overset->split(cl));
-	
-	rest.splice(rest.end(), *this, ++r, end());
+	// Work backward from this run until we find one which can be broken
+	for (const_reverse_iterator or(++r); or != rend(); ++or) 
+	{
+		run * const overset = *or;
+		run::const_iterator cl = overset->find_break(desired - advance);
+		if (cl != overset->begin() && cl != overset->end())
+		{
+			rest.push_back(overset->split(cl));
+			rest.splice(rest.end(), *this, or.base(), end());
+			return;
+		}
+	}
+	rest.splice(rest.end(), *this, begin(), end());
 }
 
 
