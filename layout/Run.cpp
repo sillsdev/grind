@@ -473,7 +473,7 @@ run::const_iterator run::find_break(PMReal desired) const
 	for (; cl != cl_e; ++cl)
 	{
 		const PMReal advance_ = advance + cl->width();
-		if (cl->break_weight() > cluster::breakweight::word && advance_ > desired)	break;
+		if (advance_ > desired)	break;
 		advance = advance_;
 	}
 	if (cl == cl_e)		return cl_e;
@@ -489,7 +489,10 @@ run::const_iterator run::find_break(PMReal desired) const
 			best_cl = cl;
 	}
 
-	return ++best_cl;
+	// Gobble up any trailing whitespace
+	while (best_cl != cl_e && (++best_cl)->break_weight() <= cluster::breakweight::word);
+
+	return best_cl;
 }
 
 
