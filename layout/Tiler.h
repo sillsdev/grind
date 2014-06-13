@@ -121,7 +121,7 @@ public:
 	const PMRectCollection	& tiles() const;
 	const ParcelKey			& parcel() const;
 
-	bool	line_deep_enough(const line_metrics &) const;
+	bool	need_retry_line(const line_metrics &);
 	void	setup_wax_line(IWaxLine * wl, line_metrics & metrics) const;
 
 private:
@@ -156,9 +156,11 @@ const ParcelKey	& tiler::parcel() const
 }
 
 inline
-bool  tiler::line_deep_enough(const line_metrics &lm) const
+bool  tiler::need_retry_line(const line_metrics &lm)
 {
-	return !(lm.leading > _height || (_at_TOP && lm[_TOP_height_metric] > _TOP_height));
+	const bool retry = lm.leading > _height || (_at_TOP && lm[_TOP_height_metric] > _TOP_height);
+	if (retry)	_y_offset = _tiles[0].Top();
+	return retry;
 }
 
 }

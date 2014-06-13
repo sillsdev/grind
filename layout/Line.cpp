@@ -122,6 +122,8 @@ PMPoint tile::content_dimensions() const
 
 void tile::break_into(tile & rest)
 {
+//	run::stretch js, s = {{0,0},{0,0},{0,0},{0,0},{0,0}};
+//	front()->get_stretch_ratios(js);
 	iterator r = begin(), r_e = end();
 	PMReal		  advance = 0;
 	PMReal const desired = _region.Width();
@@ -132,6 +134,7 @@ void tile::break_into(tile & rest)
 		PMReal const advance_ = advance + (*r)->width();
 		if (advance_ > desired)	break;
 		advance = advance_;
+//		(*r)->calculate_stretch(js, s);
 	}
 	if (r == r_e)	return;
 
@@ -496,7 +499,7 @@ IWaxLine * nrsc::compose_line(tiler & tile_manager, gr_face_cache & faces, IPara
 			(*i)->update_line_metrics(lm);
 			line_span += (*i)->span();
 		}
-	} while (!tile_manager.line_deep_enough(lm) || line_span == 0);
+	} while (tile_manager.need_retry_line(lm) || line_span == 0);
 
 
 	// TODO: Investigate use of QueryNewWaxline() instead.
