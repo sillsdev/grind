@@ -213,6 +213,7 @@ public:
 	PMReal			depth() const;
 	int				break_weight() const;
 	int &			break_weight();
+	bool			whitespace() const;
 };
 
 inline
@@ -259,5 +260,20 @@ int & cluster::break_weight()
 	return _breakweight;
 }
 
+inline
+bool cluster::whitespace() const
+{
+	if (size() == 1)
+	{
+		switch(front().justification())
+		{
+		case glyf::fill:
+		case glyf::space:
+		case glyf::tab:		return true;
+		case glyf::fixed:	return _breakweight == breakweight::whitespace;
+		}
+	}
+	return false;
+}
 
 } // end of namespace nrsc
