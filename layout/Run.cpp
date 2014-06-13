@@ -479,13 +479,15 @@ run::const_iterator run::find_break(PMReal desired) const
 	if (cl == cl_e)		return cl_e;
 
 	const_iterator best_cl = cl;
+	PMReal const em_space = _drawing_style->GetEmSpaceWidth(false);
 	for (const_iterator const cl_b = begin(); cl != cl_b; --cl)
 	{
-		// TODO: Investigate ways to use the distance from the desired
-		//       break demote potential breaks furthest from the 
-		//       desired break point.
-		// advance -= cl->width();
-		if (cl->break_weight() < best_cl->break_weight())
+		PMReal box_units = ((desired-advance)/em_space);
+		box_units *= box_units;
+		unsigned int const badness = std::min(cluster::breakweight::type(ToInt32(box_units)/cluster::breakweight::clip), cluster::breakweight::clip);
+		advance -= cl->width();
+
+		if (cl->break_weight() + badness < best_cl->break_weight())
 			best_cl = cl;
 	}
 
