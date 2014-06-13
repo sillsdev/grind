@@ -487,6 +487,12 @@ run::const_iterator run::find_break(PMReal desired) const
 		unsigned int const badness = std::min(cluster::breakweight::type(ToInt32(box_units)/cluster::breakweight::clip), cluster::breakweight::clip);
 		advance -= cl->width();
 
+		if (badness > cluster::breakweight::clip && cl->break_weight() <= cluster::breakweight::word)
+		{
+			best_cl = cl;
+			break;
+		}
+		
 		if (cl->break_weight() + badness < best_cl->break_weight())
 			best_cl = cl;
 	}
