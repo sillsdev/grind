@@ -48,8 +48,9 @@ namespace
 	{
 		const size_t n_chars = gr_seg_n_cinfo(s);
 		const int	before = std::max(i < n_chars ? gr_cinfo_break_weight(gr_seg_cinfo(s, i)) : gr_breakNone, 0),
-					after  = std::min(++i < n_chars ? gr_cinfo_break_weight(gr_seg_cinfo(s, i)) : gr_breakNone, 0);
-		return cluster::breakweight::type(std::max(before, -after));
+					after  = std::min(++i < n_chars ? gr_cinfo_break_weight(gr_seg_cinfo(s, i)) : gr_breakNone, 0),
+					resolved = std::max(before, -after);
+		return cluster::breakweight::type(resolved == gr_breakNone ? gr_breakClip : resolved);
 	}
 
 
