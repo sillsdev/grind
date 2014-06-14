@@ -139,18 +139,20 @@ void tile::break_into(tile & rest)
 	if (r == r_e)	return;
 
 	// Work backward from this run until we find one which can be broken
-	for (const_reverse_iterator or(++r); or != rend(); ++or) 
+	const_reverse_iterator or(++r);
+	do
 	{
 		run * const overset = *or;
 		run::const_iterator cl = overset->find_break(desired - advance);
-		if (cl != overset->begin() && cl != overset->end())
+		if (cl != overset->begin())
 		{
-			rest.push_back(overset->split(cl));
-			rest.splice(rest.end(), *this, or.base(), end());
-			return;
+			if (cl != overset->end()) 
+				rest.push_back(overset->split(cl));
+			break;
 		}
-	}
-	rest.splice(rest.end(), *this, begin(), end());
+	} while (++or != rend());
+
+	rest.splice(rest.end(), *this, or.base(), end());
 }
 
 
