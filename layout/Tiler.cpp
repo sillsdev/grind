@@ -110,6 +110,7 @@ bool tiler::next_line(TextIndex curr_pos,
 	// glyph, which we assume to be a capital M.
 	const bool first_line = curr_pos == _helper.GetParagraphStart();
 	_height = line.leading;
+	_y_offset_original = _y_offset;
 	_grid_alignment_metric = (grs->GetAlignOnlyFirstLine() == kFalse || first_line) 
 								? grs->GetGridAlignmentMetric() 
 								: Text::kGANone;

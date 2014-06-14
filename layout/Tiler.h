@@ -136,7 +136,8 @@ private:
 	Text::FirstLineOffsetMetric _TOP_height_metric;
 	Text::GridAlignmentMetric	_grid_alignment_metric;
 	PMRectCollection			_tiles;
-	PMReal						_y_offset;
+	PMReal						_y_offset,
+								_y_offset_original;
 	bool16						_at_TOP;
 	bool16						_parcel_pos_dependent;
 	PMReal						_left_margin;
@@ -159,7 +160,7 @@ inline
 bool  tiler::need_retry_line(const line_metrics &lm)
 {
 	const bool retry = lm.leading > _height || (_at_TOP && lm[_TOP_height_metric] > _TOP_height);
-	if (retry)	_y_offset = _tiles[0].Top();
+	if (retry)	_y_offset = _y_offset_original;
 	return retry;
 }
 
