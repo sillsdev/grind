@@ -98,6 +98,10 @@ bool run::fill(TextIterator & ti, TextIndex span)
 		switch((*ti).GetValue())
 		{
 			case kTextChar_BreakRunInStyle:
+				layout_span_with_spacing(start, ti, 0, glyf::space);
+				++ti; ++_span;
+				return true;
+				break;
 			case kTextChar_CR:
 			case kTextChar_SoftCR:
 				layout_span_with_spacing(start, ti, _drawing_style->GetSpaceWidth(), glyf::space);
