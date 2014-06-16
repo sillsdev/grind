@@ -130,32 +130,39 @@ void tile::break_into(tile & rest)
 	iterator		best_r = begin();
 	run::iterator	best_cl = (*best_r)->begin();
 	int				best_bw = best_cl->break_weight() + cluster::breakweight::clip;
-	for (iterator r = begin(), r_e = end(); advance <= desired && r != r_e; ++r)
+	for (iterator r = begin(), r_e = end(); r != r_e; ++r)
 	{
+		PMReal const	desired_adj = desired + InterfacePtr<IJustificationStyle>((*r)->get_style(), UseDefaultIID())->GetAlteredLetterspace(false);
+
 		if (InterfacePtr<ICompositionStyle>((*r)->get_style(), UseDefaultIID())->GetNoBreak())
 		{
 			advance += (*r)->width();
+			if (advance > desired)	
+				break;
 			continue;
 		}
 		
-		PMReal const	desired_adj = desired + InterfacePtr<IJustificationStyle>((*r)->get_style(), UseDefaultIID())->GetAlteredLetterspace(false);
-		for (run::iterator cl = (*r)->begin(), cl_e = (*r)->end(); advance <= desired_adj && cl != cl_e; ++cl)
+		for (run::iterator cl = (*r)->begin(), cl_e = (*r)->end(); cl != cl_e; ++cl)
 		{
-			if (cl->break_weight() <= cluster::breakweight::word)
+			advance += cl->width();
+
+			if (advance > desired && !cl->whitespace()) 
+				break;
+
+			const int bw = ToInt32(cl->break_weight()*(1+(1-advance/desired)*(1-advance/desired)));
+			if (bw <=  best_bw)
 			{
 				best_r = r; 
 				best_cl = cl;
-				best_bw = cl->break_weight();
+				best_bw = bw;
 			} 
-
-			advance += cl->width();
 		}
 	}
-
+	
 	// Walk forwards adding any trailing whitespace
 	for (iterator const r_e = end(); best_r != r_e; best_cl = (*best_r)->begin())
 	{
-		while (best_cl != (*best_r)->end() && best_cl->whitespace()) ++best_cl;
+		while (best_cl != (*best_r)->end() && (++best_cl)->whitespace());
 		if (best_cl != (*best_r)->end() || ++best_r == r_e) break;
 	}
 
