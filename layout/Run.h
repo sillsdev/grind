@@ -108,7 +108,6 @@ public:
 	// Modifiers
 	using base_t::clear;
 	pointer	open_cluster();
-	void	close_cluster(const_pointer);
 	run * split(const_iterator position);
 
 	// Operations
@@ -156,12 +155,6 @@ run::pointer run::open_cluster()
 {
 	resize(size()+1);
 	return &back();
-}
-
-inline
-void run::close_cluster(run::const_pointer cl)
-{
-	_height = std::max(cl->height() + cl->depth(), _height);
 }
 
 inline

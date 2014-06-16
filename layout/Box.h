@@ -53,20 +53,16 @@ public:
 	enum justification_t		{fill, space, letter, glyph, fixed, tab};
 
 private:
-	PMReal			_width,
-					_height,
-					_depth;
+	PMReal			_width;
 	PMPoint			_pos;
 	int				_id;
 	justification_t	_just_level;
 
 public:
-	glyf(unsigned short id, justification_t level, PMReal width, PMReal height, PMReal depth, PMPoint pos=PMPoint(0,0));
+	glyf(unsigned short id, justification_t level, PMReal width, PMPoint pos=PMPoint(0,0));
 	
 	unsigned short	id() const throw();
 	PMReal			width() const throw();
-	PMReal			height() const throw();
-	PMReal			depth() const throw();
 	PMReal			advance() const throw();
 	void			shift(const PMPoint & delta) throw();
 	void			shift(const PMReal & delta) throw();
@@ -78,10 +74,8 @@ public:
 };
 
 inline
-glyf::glyf(unsigned short id, justification_t l, PMReal w, PMReal h, PMReal d, PMPoint p)
+glyf::glyf(unsigned short id, justification_t l, PMReal w, PMPoint p)
 : _width(w), 
-  _height(h), 
-  _depth(d),
   _pos(p),
   _id(id),
   _just_level(l)
@@ -95,16 +89,6 @@ unsigned short glyf::id() const throw() {
 inline
 PMReal glyf::width() const throw() {
 	return _width;
-}
-
-inline
-PMReal glyf::height() const throw() {
-	return _height;
-}
-
-inline
-PMReal glyf::depth() const throw() {
-	return _depth;
 }
 
 inline
@@ -156,8 +140,6 @@ class cluster : private std::vector<glyf>
 private:
 	typedef std::vector<glyf>	base_t;
 
-	PMReal			_height,
-					_depth;
 	unsigned char	_span;
 	int				_breakweight;
 
@@ -209,8 +191,6 @@ public:
 
 	// Properties
 	PMReal			width() const;
-	PMReal			height() const;
-	PMReal			depth() const;
 	int				break_weight() const;
 	int &			break_weight();
 	bool			whitespace() const;
@@ -218,22 +198,10 @@ public:
 
 inline
 cluster::cluster()
-: _height(0),
-  _depth(0),
-  _span(0),
+: _span(0),
   _breakweight(cluster::breakweight::clip)
 {
 	reserve(1);
-}
-
-inline
-PMReal cluster::height() const {
-	return _height;
-}
-
-inline
-PMReal cluster::depth() const {
-	return _depth;
 }
 
 inline

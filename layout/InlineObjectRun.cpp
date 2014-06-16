@@ -75,9 +75,9 @@ bool inline_object::layout_span(TextIterator ti, size_t span)
 
 	// Inline geometry is relative to the baseline of the text. Don't want to add stretch
 	cluster * cl = open_cluster();
-	cl->add_glyf(glyf(kInvalidGlyphID, glyf::fixed, inline_bounding_box.Width(), -inline_bounding_box.Top(), 0));
+	_height = -inline_bounding_box.Top();
+	cl->add_glyf(glyf(kInvalidGlyphID, glyf::fixed, inline_bounding_box.Width()));
 	cl->add_chars();
-	close_cluster(cl);
 
 	return true;
 }

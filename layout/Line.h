@@ -62,7 +62,7 @@ class tile : private std::list<run*>
 	tile & operator = (const tile &);
 
 
-	static run    * create_run(gr_face_cache & faces, IDrawingStyle * ds, PMReal & x, TextIterator & ti, TextIndex span);
+	static run    * create_run(gr_face_cache & faces, IDrawingStyle * ds, TextIterator & ti, TextIndex span);
 
 public:
 	tile(const PMRect & region=PMRect());

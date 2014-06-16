@@ -69,7 +69,6 @@ tile::~tile()
 bool tile::fill_by_span(IComposeScanner & scanner, gr_face_cache & faces, TextIndex offset, TextIndex span)
 {
 	TextIndex	total_span = 0;
-	PMReal		x = _region.Left();
 
 	do
 	{
@@ -82,7 +81,7 @@ bool tile::fill_by_span(IComposeScanner & scanner, gr_face_cache & faces, TextIn
 
 		do
 		{
-			run * const r = create_run(faces, ds, x, ti, run_span);
+			run * const r = create_run(faces, ds, ti, run_span);
 			if (r == nil)	return false;
 			push_back(r);
 			r->apply_desired_widths();
@@ -407,13 +406,11 @@ PMReal tile::align_text(const IParagraphComposer::RebuildHelper & helper, IJusti
 }
 
 
-run * tile::create_run(gr_face_cache &faces, IDrawingStyle * ds, PMReal & x, TextIterator & ti, TextIndex span)
+run * tile::create_run(gr_face_cache &faces, IDrawingStyle * ds, TextIterator & ti, TextIndex span)
 {
 	InterfacePtr<IPMFont>			font = ds->QueryFont();
-	InterfacePtr<ICompositionStyle> cs(ds, UseDefaultIID());
-	PMRect mbox = font->GetEmBox();
 
-	if (ti.IsNull() || font == nil || cs == nil)
+	if (ti.IsNull() || font == nil)
 		return nil;
 
 	run * r = nil;

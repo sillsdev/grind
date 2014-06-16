@@ -118,7 +118,6 @@ bool graphite_run::layout_span(TextIterator ti, size_t span)
 			// Finish off this cluster
 			cl->add_chars(cl_after - cl_before + 1);
 			cl->break_weight() = breakweight(seg, cl_after);
-			close_cluster(cl);
 
 			// Open a fresh one.
 			cl = open_cluster();
@@ -130,8 +129,7 @@ bool graphite_run::layout_span(TextIterator ti, size_t span)
 		// Add the glyph
 		cl->add_glyf(glyf(gr_slot_gid(s), 
 						  justification(seg, s), 
-						  gr_slot_advance_X(s, 0, grfont), 
-						  _height, 0,
+						  gr_slot_advance_X(s, 0, grfont),
 						  PMPoint(gr_slot_origin_X(s)-predicted_orign, gr_slot_origin_Y(s)*y_pos_scale)));
 
 		predicted_orign = gr_slot_origin_X(s) + gr_slot_advance_X(s, 0, grfont);
@@ -139,7 +137,6 @@ bool graphite_run::layout_span(TextIterator ti, size_t span)
 	// Close the last open cluster
 	cl->add_chars(cl_after - cl_before + 1);
 	cl->break_weight() = breakweight(seg, cl_after);
-	close_cluster(cl);
 
 	// Tidy up
 	gr_seg_destroy(seg);

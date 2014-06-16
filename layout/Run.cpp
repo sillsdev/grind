@@ -199,11 +199,9 @@ void run::add_glue(glyf::justification_t level, PMReal width, cluster::breakweig
 	
 	cluster * cl = open_cluster();
 
-	cl->add_glyf(glyf(_drawing_style->GetSpaceGlyph(), level, width, _height, 0));
+	cl->add_glyf(glyf(_drawing_style->GetSpaceGlyph(), level, width));
 	cl->add_chars();
 	cl->break_weight() = bw;
-
-	close_cluster(cl);
 }
 
 
@@ -213,11 +211,9 @@ void run::add_letter(int glyph_id, PMReal width, cluster::breakweight::type bw, 
 		open_cluster();
 
 	cluster & cl = back();
-	cl.add_glyf(glyf(glyph_id, to_cluster ? glyf::glyph : glyf::letter, width, _height, 0));
+	cl.add_glyf(glyf(glyph_id, to_cluster ? glyf::glyph : glyf::letter, width));
 	cl.add_chars();
 	cl.break_weight() = bw;
-	
-	close_cluster(&cl);
 }
 
 
