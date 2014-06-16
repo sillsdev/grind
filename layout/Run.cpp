@@ -266,16 +266,15 @@ bool run::render_run(IWaxGlyphs & glyphs) const
 	for (const_iterator cl_i = begin(); cl_i != end(); ++cl_i)
 	{
 		const cluster & cl = *cl_i;
-		const PMReal	cluster_advance = cl.width();
 		
-		glyphs.AddMappingWidth(cluster_advance);
+		glyphs.AddMappingWidth(cl.width());
 		glyphs.AddMappingRange(i++, gi, cl.size());
-		gi += cl.size();
 		for (unsigned char n = cl.span()-1; n; --n, ++i)
 		{
 			glyphs.AddMappingWidth(0);
-			glyphs.AddMappingRange(i, gi, 0);
+			glyphs.AddMappingRange(i, gi, cl.size());
 		}
+		gi += cl.size();
 	}
 
 	delete [] x_offs;
