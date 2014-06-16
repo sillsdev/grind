@@ -122,37 +122,50 @@ PMPoint tile::content_dimensions() const
 
 void tile::break_into(tile & rest)
 {
-//	run::stretch js, s = {{0,0},{0,0},{0,0},{0,0},{0,0}};
-//	front()->get_stretch_ratios(js);
-	iterator r = begin(), r_e = end();
-	PMReal		  advance = 0;
-	PMReal const desired = _region.Width();
+	PMReal			advance = 0;
+	PMReal const	desired = _region.Width(),
+					inner_limit = _region.Height()/2*5,
+					outer_limit = std::numeric_limits<float>::min();
 
-	// Find the run which stradles the desired with boundry.
-	for (; r != r_e; ++r)
+	iterator		best_r = begin();
+	run::iterator	best_cl = (*best_r)->begin();
+	int				best_bw = best_cl->break_weight() + cluster::breakweight::clip;
+	for (iterator r = begin(), r_e = end(); advance <= desired && r != r_e; ++r)
 	{
-		PMReal const advance_ = advance + (*r)->width();
-		if (advance_ > desired)	break;
-		advance = advance_;
-//		(*r)->calculate_stretch(js, s);
-	}
-	if (r == r_e)	return;
-
-	// Work backward from this run until we find one which can be broken
-	const_reverse_iterator or(++r);
-	do
-	{
-		run * const overset = *or;
-		run::const_iterator cl = overset->find_break(desired - advance);
-		if (cl != overset->begin())
+		if (InterfacePtr<ICompositionStyle>((*r)->get_style(), UseDefaultIID())->GetNoBreak())
 		{
-			if (cl != overset->end()) 
-				rest.push_back(overset->split(cl));
-			break;
+			advance += (*r)->width();
+			continue;
 		}
-	} while (++or != rend());
+		
+		PMReal const	desired_adj = desired + InterfacePtr<IJustificationStyle>((*r)->get_style(), UseDefaultIID())->GetAlteredLetterspace(false);
+		for (run::iterator cl = (*r)->begin(), cl_e = (*r)->end(); advance <= desired_adj && cl != cl_e; ++cl)
+		{
+			if (cl->break_weight() <= cluster::breakweight::word)
+			{
+				best_r = r; 
+				best_cl = cl;
+				best_bw = cl->break_weight();
+			} 
 
-	rest.splice(rest.end(), *this, or.base(), end());
+			advance += cl->width();
+		}
+	}
+
+	// Walk forwards adding any trailing whitespace
+	for (iterator const r_e = end(); best_r != r_e; best_cl = (*best_r)->begin())
+	{
+		while (best_cl != (*best_r)->end() && best_cl->whitespace()) ++best_cl;
+		if (best_cl != (*best_r)->end() || ++best_r == r_e) break;
+	}
+
+	if (advance <= desired || best_r == end())	return;
+
+	if (best_cl != (*best_r)->end())
+		rest.push_back((*best_r)->split(best_cl));
+	rest.splice(rest.end(), *this, ++best_r, end());
+
+
 }
 
 
@@ -254,7 +267,7 @@ void tile::apply_tab_widths(ICompositionStyle * cs)
 	PMReal	pos = position().X(),
 			max_pos = pos + dimensions().X();
 	PMReal	width = 0,
-		align_width = std::numeric_limits<float>::max();
+			align_width = std::numeric_limits<float>::max();
 
 	run::iterator	tab;
 	TabStop			ts;
@@ -262,7 +275,7 @@ void tile::apply_tab_widths(ICompositionStyle * cs)
 
 	for (iterator r = begin(), r_e = end(); r != r_e && pos < max_pos; ++r)
 	{
-		// Get this runs font
+		// Get this run's font
 		InterfacePtr<IFontInstance>	font = (*r)->get_style()->QueryFontInstance(kFalse);
 		Text::GlyphID target = font->GetGlyphID(ts.GetAlignToChar().GetValue());
 			

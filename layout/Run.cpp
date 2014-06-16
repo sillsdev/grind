@@ -456,54 +456,6 @@ void run::adjust_widths(PMReal fill_space, PMReal word_space, PMReal letter_spac
 }
 
 
-run::const_iterator run::find_break(PMReal desired) const
-{
-	InterfacePtr<IJustificationStyle>	js(_drawing_style, UseDefaultIID());
-	InterfacePtr<ICompositionStyle>		cs(_drawing_style, UseDefaultIID());
-
-	if (cs->GetNoBreak())	
-		return begin();
-
-	// Walk forwards to find the point where a cluster crosses the desired
-	//  width, take into account the altered leterspacing if any.
-	const_iterator			cl = begin();
-	const_iterator const	cl_e = end();
-	PMReal advance = 0;
-	desired += js->GetAlteredLetterspace(false);
-	for (; cl != cl_e; ++cl)
-	{
-		const PMReal advance_ = advance + cl->width();
-		if (advance_ > desired)	break;
-		advance = advance_;
-	}
-	if (cl == cl_e)		return cl_e;
-
-	const_iterator best_cl = cl;
-	PMReal const em_space = _drawing_style->GetEmSpaceWidth(false);
-	for (const_iterator const cl_b = begin(); cl != cl_b; --cl)
-	{
-		PMReal box_units = ((desired-advance)/em_space);
-		box_units *= box_units;
-		unsigned int const badness = std::min(cluster::breakweight::type(ToInt32(box_units)/cluster::breakweight::clip), cluster::breakweight::clip);
-		advance -= cl->width();
-
-		if (badness > cluster::breakweight::clip && cl->break_weight() <= cluster::breakweight::word)
-		{
-			best_cl = cl;
-			break;
-		}
-		
-		if (cl->break_weight() + badness < best_cl->break_weight())
-			best_cl = cl;
-	}
-
-	// Gobble up any trailing whitespace
-	while (best_cl != cl_e && (++best_cl)->break_weight() <= cluster::breakweight::word);
-
-	return best_cl;
-}
-
-
 PMReal run::width() const
 {
 	PMReal advance = 0;

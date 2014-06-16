@@ -115,7 +115,6 @@ public:
 	bool			fill(TextIterator & ti, TextIndex span);
 	bool			joinable(const run & rhs) const;
 	run	&			join(run & rhs);
-	const_iterator	find_break(PMReal desired) const;
 	
 	PMReal			width() const;
 	PMReal			height() const;
