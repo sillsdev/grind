@@ -35,6 +35,15 @@ THE SOFTWARE.
 // Project forward declarations
 using namespace nrsc;
 
+const cluster::penalty::type	
+	cluster::penalty::mandatory		= -10000.0,
+	cluster::penalty::whitespace	= -1.0,
+	cluster::penalty::word			= -0.5,
+	cluster::penalty::intra			= 0.5,
+	cluster::penalty::letter		= 0.75,
+	cluster::penalty::clip			= 1,
+	cluster::penalty::never			= 10000.0;
+
 PMReal glyf::advance() const throw() {
 	return std::max(_pos.X() + _width, PMReal(0));
 }
@@ -71,6 +80,40 @@ void cluster::trim(const PMReal alt_ltr_spc)
 			return;
 			break;
 		default:
+			break;
+		}
+	}
+}
+
+
+void cluster::calculate_stretch(const PMReal & space_width, const glyf::stretch & js, glyf::stretch & s) const
+{
+	for (cluster::const_iterator g = begin(), g_e = end(); g != g_e; ++g)
+	{
+		const glyf::justification_t level = g->justification();
+
+		switch(level)
+		{
+		case glyf::fill:
+			s[glyf::fill].min += space_width*js[glyf::fill].min;
+			s[glyf::fill].max += space_width*js[glyf::fill].max;
+			++s[glyf::fill].num;
+			break;
+		case glyf::space:
+			s[glyf::space].min += space_width*js[glyf::space].min;
+			s[glyf::space].max += space_width*js[glyf::space].max;
+			++s[glyf::space].num;
+		case glyf::letter:
+			s[glyf::letter].min += space_width*js[glyf::letter].min;
+			s[glyf::letter].max += space_width*js[glyf::letter].max;
+			++s[glyf::letter].num;
+		case glyf::glyph:
+			s[glyf::glyph].min += g->advance()*js[glyf::glyph].min;
+			s[glyf::glyph].max += g->advance()*js[glyf::glyph].max;
+			++s[glyf::glyph].num;
+			break;
+		case glyf::fixed:
+			++s[glyf::fixed].num;
 			break;
 		}
 	}

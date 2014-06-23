@@ -118,58 +118,94 @@ PMPoint tile::content_dimensions() const
 	return PMPoint(w,h);
 }
 
+namespace 
+{
+	inline float total_stretch(const bool stretch, const glyf::stretch & ts) {
+		return ToFloat(stretch ? ts[glyf::space].max + ts[glyf::letter].max + ts[glyf::glyph].max 
+							   : -(ts[glyf::space].min + ts[glyf::letter].min + ts[glyf::glyph].min));
+	}
+
+	inline float badness(const PMReal & r) {
+		return pow(ToFloat(r),3);
+	}
+
+	inline float demerits(const float b, cluster::penalty::type p) {
+		return pow(b,2) + (p < 0 ? -pow(p,2) : pow(p,2));
+	}
+}
+
+struct break_point
+{
+	break_point(const tile & t) 
+	: run(t.begin()), 
+	  cluster((*run)->begin()),  
+	  demerits(std::numeric_limits<float>::infinity()) {}
+
+	void improve(const tile::const_iterator & r, const run::const_iterator & cl, const float d) {
+		if (d > demerits) return;
+		run = r; cluster = cl; demerits = d;
+	}
+
+	tile::const_iterator	run;
+	run::const_iterator	cluster;
+	float			demerits;
+};
 
 void tile::break_into(tile & rest)
 {
-	PMReal			advance = 0;
-	PMReal const	desired = _region.Width(),
-					inner_limit = _region.Height()/2*5,
-					outer_limit = std::numeric_limits<float>::min();
+	glyf::stretch js, s = {{0,0},{0,0},{0,0},{0,0},{0,0}};
+	front()->get_stretch_ratios(js);
 
-	iterator		best_r = begin();
-	run::iterator	best_cl = (*best_r)->begin();
-	int				best_bw = best_cl->break_weight() + cluster::breakweight::clip;
+	PMReal			advance = 0;
+	PMReal const	desired = _region.Width();
+
+	break_point	best = *this,
+		        fallback = *this;
 	for (iterator r = begin(), r_e = end(); r != r_e; ++r)
 	{
-		PMReal const	desired_adj = desired + InterfacePtr<IJustificationStyle>((*r)->get_style(), UseDefaultIID())->GetAlteredLetterspace(false);
+		PMReal const	desired_adj = desired + InterfacePtr<IJustificationStyle>((*r)->get_style(), UseDefaultIID())->GetAlteredLetterspace(false),
+						fallback_stretch = desired_adj/1.2;
 
 		if (InterfacePtr<ICompositionStyle>((*r)->get_style(), UseDefaultIID())->GetNoBreak())
 		{
 			advance += (*r)->width();
-			if (advance > desired)	
-				break;
+			(*r)->calculate_stretch(js, s);
 			continue;
 		}
 		
+		PMReal const	space_width = (*r)->get_style()->GetSpaceWidth();
 		for (run::iterator cl = (*r)->begin(), cl_e = (*r)->end(); cl != cl_e; ++cl)
 		{
 			advance += cl->width();
+			cl->calculate_stretch(space_width, js, s);
 
-			if (advance > desired && !cl->whitespace()) 
-				break;
-
-			const int bw = ToInt32(cl->break_weight()*(1+(1-advance/desired)*(1-advance/desired)));
-			if (bw <=  best_bw)
-			{
-				best_r = r; 
-				best_cl = cl;
-				best_bw = bw;
-			} 
+			const PMReal stretch = desired_adj - advance;
+			const float ts = total_stretch(stretch > 0, s),
+						b = badness(stretch/ts),
+						fb = badness(stretch/(stretch > 0 ? fallback_stretch : ts)),
+						d = demerits(b, cl->break_penalty()),
+						fd = demerits(fb, cl->break_penalty());
+			
+			if (b < 1)	best.improve(r,cl,d);
+			if (fb < 1) fallback.improve(r,cl,fd);
 		}
 	}
 	
+	if (best.cluster == front()->begin())
+		best = fallback;
+
 	// Walk forwards adding any trailing whitespace
-	for (iterator const r_e = end(); best_r != r_e; best_cl = (*best_r)->begin())
+	for (iterator const r_e = end(); best.run != r_e; best.cluster = (*best.run)->begin())
 	{
-		while (best_cl != (*best_r)->end() && (++best_cl)->whitespace());
-		if (best_cl != (*best_r)->end() || ++best_r == r_e) break;
+		while (best.cluster != (*best.run)->end() && (++best.cluster)->whitespace());
+		if (best.cluster != (*best.run)->end() || ++best.run == r_e) break;
 	}
 
-	if (advance <= desired || best_r == end())	return;
+	if (advance <= desired || best.run == end())	return;
 
-	if (best_cl != (*best_r)->end())
-		rest.push_back((*best_r)->split(best_cl));
-	rest.splice(rest.end(), *this, ++best_r, end());
+	if (best.cluster != (*best.run)->end())
+		rest.push_back((*best.run)->split(best.cluster));
+	rest.splice(rest.end(), *this, ++best.run, end());
 
 
 }
@@ -177,7 +213,7 @@ void tile::break_into(tile & rest)
 
 void tile::justify()
 {
-	run::stretch js, s = {{0,0},{0,0},{0,0},{0,0},{0,0}};
+	glyf::stretch js, s = {{0,0},{0,0},{0,0},{0,0},{0,0}};
 	front()->get_stretch_ratios(js);
 
 	// Calculate the stretch values for all the classes.
@@ -326,7 +362,7 @@ PMReal tile::align_text(const IParagraphComposer::RebuildHelper & helper, IJusti
 	if (empty()) return 0;
 
 	run & last_run = *back();
-	const bool	last_line = last_run.back().break_weight() == cluster::breakweight::mandatory;
+	const bool	last_line = last_run.back().break_penalty() == cluster::penalty::mandatory;
 
 	last_run.trim_trailing_whitespace(js->GetAlteredLetterspace(false));
 

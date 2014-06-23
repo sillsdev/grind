@@ -44,13 +44,22 @@ using namespace nrsc;
 
 namespace
 {
-	cluster::breakweight::type breakweight(const gr_segment * const s, TextIndex i)
+	
+	cluster::penalty::type penalty(int const bw)
+	{
+		if (bw < gr_breakWord)	return (bw-20)/10.0;
+		if (bw < 17)			return (bw-17)/4.0;
+		if (bw < gr_breakIntra)	return (bw-17)/6.0;
+		return bw/40.0;
+	}
+
+	int resolve_penalty(const gr_segment * const s, TextIndex i)
 	{
 		const size_t n_chars = gr_seg_n_cinfo(s);
 		const int	before = std::max(i < n_chars ? gr_cinfo_break_weight(gr_seg_cinfo(s, i)) : gr_breakNone, 0),
 					after  = std::min(++i < n_chars ? gr_cinfo_break_weight(gr_seg_cinfo(s, i)) : gr_breakNone, 0),
 					resolved = std::max(before, -after);
-		return cluster::breakweight::type(resolved == gr_breakNone ? gr_breakClip : resolved);
+		return resolved == gr_breakNone ? gr_breakClip : resolved;
 	}
 
 
@@ -117,7 +126,7 @@ bool graphite_run::layout_span(TextIterator ti, size_t span)
 		{
 			// Finish off this cluster
 			cl->add_chars(cl_after - cl_before + 1);
-			cl->break_weight() = breakweight(seg, cl_after);
+			cl->break_penalty() = penalty(resolve_penalty(seg, cl_after));
 
 			// Open a fresh one.
 			cl = open_cluster();
@@ -136,7 +145,7 @@ bool graphite_run::layout_span(TextIterator ti, size_t span)
 	}
 	// Close the last open cluster
 	cl->add_chars(cl_after - cl_before + 1);
-	cl->break_weight() = breakweight(seg, cl_after);
+	cl->break_penalty() = penalty(resolve_penalty(seg, cl_after));
 
 	// Tidy up
 	gr_seg_destroy(seg);

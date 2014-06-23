@@ -73,11 +73,11 @@ bool fallback_run::layout_span(TextIterator ti, size_t span)
 		const int gid = gp->GetGlyphID();
 		
 		if (u_isspace(*c))
-			add_glue(glyf::space, _drawing_style->GetSpaceWidth(), u_isWhitespace(*c) ? cluster::breakweight::word : cluster::breakweight::never);
+			add_glue(glyf::space, _drawing_style->GetSpaceWidth(), u_isWhitespace(*c) ? cluster::penalty::word : cluster::penalty::never);
 		else
 		{
 			PMReal glyph_width = font->GetGlyphWidth(gid);
-			add_letter(gid, glyph_width, cluster::breakweight::letter, glyph_width < min_width);
+			add_letter(gid, glyph_width, cluster::penalty::letter, glyph_width < min_width);
 		}
 
 		// Set the kerning.

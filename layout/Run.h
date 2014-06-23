@@ -59,14 +59,11 @@ class run : protected std::list<cluster>
 	base_t::iterator	_trailing_ws;
 	PMReal				_extra_scale;
 
-public:
-	typedef struct { PMReal min, max; TextIndex num; }	stretch[5];
-
 protected:
 	run();
 
-	void	add_glue(glyf::justification_t level, PMReal width, cluster::breakweight::type bw=cluster::breakweight::whitespace);
-	void	add_letter(int glyph_id, PMReal width, cluster::breakweight::type bw=cluster::breakweight::letter, bool to_cluster=false);
+	void	add_glue(glyf::justification_t level, PMReal width, cluster::penalty::type bw=cluster::penalty::whitespace);
+	void	add_letter(int glyph_id, PMReal width, cluster::penalty::type bw=cluster::penalty::letter, bool to_cluster=false);
 
 	run(IDrawingStyle *);
 
@@ -121,8 +118,8 @@ public:
 	IWaxRun		  * wax_run() const;
 	IDrawingStyle * get_style() const;
 
-	void get_stretch_ratios(stretch &) const;
-	void calculate_stretch(const stretch & js, stretch & s) const;
+	void get_stretch_ratios(glyf::stretch &) const;
+	void calculate_stretch(const glyf::stretch & js, glyf::stretch & s) const;
 	void apply_desired_widths();
 	void adjust_widths(PMReal fill_space, PMReal word_space, PMReal letter_space, PMReal glyph_scale);
 	void trim_trailing_whitespace(const PMReal letter_space);

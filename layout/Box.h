@@ -51,6 +51,7 @@ class glyf
 {
 public:
 	enum justification_t		{fill, space, letter, glyph, fixed, tab};
+	typedef struct { PMReal min, max; TextIndex num; }	stretch[5];
 
 private:
 	PMReal			_width;
@@ -141,7 +142,7 @@ private:
 	typedef std::vector<glyf>	base_t;
 
 	unsigned char	_span;
-	int				_breakweight;
+	float				_penalty;
 
 public:
 	// Member types
@@ -155,15 +156,16 @@ public:
 	typedef base_t::const_pointer			const_pointer;
 	typedef base_t::const_reference			const_reference;
 
-	struct breakweight { enum type { 
-		mandatory	= 0,
-		whitespace	= 10,
-		word		= 15,
-		intra		= 20,
-		letter		= 30,
-		clip		= 40,
-		never		= USHRT_MAX
-	}; };
+	struct penalty { 
+		typedef float	type;
+		static const type	mandatory,
+							whitespace,
+							word,
+							intra,
+							letter,
+							clip,
+							never;
+	};
 
 	// Constructor
 	cluster();
@@ -191,15 +193,16 @@ public:
 
 	// Properties
 	PMReal			width() const;
-	int				break_weight() const;
-	int &			break_weight();
+	penalty::type	break_penalty() const;
+	penalty::type &	break_penalty();
 	bool			whitespace() const;
+	void			calculate_stretch(const PMReal & space_width, const glyf::stretch & js, glyf::stretch & s) const;
 };
 
 inline
 cluster::cluster()
 : _span(0),
-  _breakweight(cluster::breakweight::clip)
+  _penalty(cluster::penalty::clip)
 {
 	reserve(1);
 }
@@ -217,15 +220,15 @@ size_t cluster::span() const
 }
 
 inline 
-int cluster::break_weight() const
+cluster::penalty::type cluster::break_penalty() const
 {
-	return _breakweight;
+	return _penalty;
 }
 
 inline 
-int & cluster::break_weight()
+cluster::penalty::type & cluster::break_penalty()
 {
-	return _breakweight;
+	return _penalty;
 }
 
 inline
@@ -238,7 +241,7 @@ bool cluster::whitespace() const
 		case glyf::fill:
 		case glyf::space:
 		case glyf::tab:		return true;
-		case glyf::fixed:	return _breakweight == breakweight::whitespace;
+		case glyf::fixed:	return _penalty == penalty::whitespace;
 		}
 	}
 	return false;

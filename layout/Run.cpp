@@ -105,7 +105,7 @@ bool run::fill(TextIterator & ti, TextIndex span)
 			case kTextChar_CR:
 			case kTextChar_SoftCR:
 				layout_span_with_spacing(start, ti, _drawing_style->GetSpaceWidth(), glyf::space);
-				back().break_weight() = cluster::breakweight::mandatory;
+				back().break_penalty() = cluster::penalty::mandatory;
 				++ti; ++_span;
 				return true; 
 				break;
@@ -116,12 +116,12 @@ bool run::fill(TextIterator & ti, TextIndex span)
 			case kTextChar_TableContinued:
 			case kTextChar_ObjectReplacementCharacter:	
 				layout_span(start, ti - start);
-				back().break_weight() = cluster::breakweight::whitespace;
+				back().break_penalty() = cluster::penalty::whitespace;
 				return true; 
 				break;
 			case kTextChar_HardSpace:
 				layout_span_with_spacing(start, ti, _drawing_style->GetSpaceWidth(), glyf::space);
-				back().break_weight() = cluster::breakweight::never;
+				back().break_penalty() = cluster::penalty::never;
 				break;
 			case kTextChar_FlushSpace:
 				layout_span_with_spacing(start, ti, _drawing_style->GetSpaceWidth(), glyf::fill); 
@@ -156,7 +156,7 @@ bool run::fill(TextIterator & ti, TextIndex span)
 				break;
 			case kTextChar_NarrowNoBreakSpace:
 				layout_span_with_spacing(start, ti, _drawing_style->GetSpaceWidth(), glyf::fixed);
-				back().break_weight() = cluster::breakweight::never;
+				back().break_penalty() = cluster::penalty::never;
 				break;
 			case kTextChar_ZeroSpaceBreak:
 				layout_span_with_spacing(start, ti, 0, glyf::fixed);
@@ -164,11 +164,11 @@ bool run::fill(TextIterator & ti, TextIndex span)
 			case kTextChar_ZeroWidthNonJoiner:
 			case kTextChar_ZeroWidthJoiner:
 				layout_span_with_spacing(start, ti, 0, glyf::glyph);
-				back().break_weight() = cluster::breakweight::never;
+				back().break_penalty() = cluster::penalty::never;
 				break;
 			case kTextChar_ZeroSpaceNoBreak:
 				layout_span_with_spacing(start, ti, 0, glyf::fixed);
-				back().break_weight() = cluster::breakweight::never;
+				back().break_penalty() = cluster::penalty::never;
 				break;
 			default: break;
 		}
@@ -194,18 +194,18 @@ void run::layout_span_with_spacing(TextIterator & first, const TextIterator & la
 }
 
 
-void run::add_glue(glyf::justification_t level, PMReal width, cluster::breakweight::type bw)
+void run::add_glue(glyf::justification_t level, PMReal width, cluster::penalty::type bw)
 {
 	
 	cluster * cl = open_cluster();
 
 	cl->add_glyf(glyf(_drawing_style->GetSpaceGlyph(), level, width));
 	cl->add_chars();
-	cl->break_weight() = bw;
+	cl->break_penalty() = bw;
 }
 
 
-void run::add_letter(int glyph_id, PMReal width, cluster::breakweight::type bw, bool to_cluster)
+void run::add_letter(int glyph_id, PMReal width, cluster::penalty::type bw, bool to_cluster)
 {
 	if (!to_cluster || empty())
 		open_cluster();
@@ -213,7 +213,7 @@ void run::add_letter(int glyph_id, PMReal width, cluster::breakweight::type bw, 
 	cluster & cl = back();
 	cl.add_glyf(glyf(glyph_id, to_cluster ? glyf::glyph : glyf::letter, width));
 	cl.add_chars();
-	cl.break_weight() = bw;
+	cl.break_penalty() = bw;
 }
 
 
@@ -319,7 +319,7 @@ IWaxRun * run::wax_run() const
 }
 
 
-void run::get_stretch_ratios(stretch & s) const
+void run::get_stretch_ratios(glyf::stretch & s) const
 {
 	PMReal min,des,max;
 	InterfacePtr<IJustificationStyle>	js(_drawing_style, UseDefaultIID());
@@ -349,42 +349,12 @@ void run::get_stretch_ratios(stretch & s) const
 }
 
 
-void run::calculate_stretch(const stretch & js, stretch & s) const
+void run::calculate_stretch(const glyf::stretch & js, glyf::stretch & s) const
 {
 	const PMReal	space_width = _drawing_style->GetSpaceWidth();
 
 	for (const_iterator cl = begin(), cl_e = _trailing_ws; cl != cl_e; ++cl)
-	{
-		for (cluster::const_iterator g = cl->begin(), g_e = cl->end(); g != g_e; ++g)
-		{
-			const glyf::justification_t level = g->justification();
-
-			switch(level)
-			{
-			case glyf::fill:
-				s[glyf::fill].min += space_width*js[glyf::fill].min;
-				s[glyf::fill].max += space_width*js[glyf::fill].max;
-				++s[glyf::fill].num;
-				break;
-			case glyf::space:
-				s[glyf::space].min += space_width*js[glyf::space].min;
-				s[glyf::space].max += space_width*js[glyf::space].max;
-				++s[glyf::space].num;
-			case glyf::letter:
-				s[glyf::letter].min += space_width*js[glyf::letter].min;
-				s[glyf::letter].max += space_width*js[glyf::letter].max;
-				++s[glyf::letter].num;
-			case glyf::glyph:
-				s[glyf::glyph].min += g->advance()*js[glyf::glyph].min;
-				s[glyf::glyph].max += g->advance()*js[glyf::glyph].max;
-				++s[glyf::glyph].num;
-				break;
-			case glyf::fixed:
-				++s[glyf::fixed].num;
-				break;
-			}
-		}
-	}
+		cl->calculate_stretch(space_width, js, s);
 
 	for (const_iterator cl = _trailing_ws, cl_e = end(); cl != cl_e; ++cl)
 	{
