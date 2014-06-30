@@ -94,6 +94,7 @@ public:
 	PMPoint			dimensions() const;
 	iterator		trailing_whitespace();
 	const_iterator	trailing_whitespace() const;
+	const runs_t &	runs() const;
 
 	// Operations
 	void get_stretch_ratios(glyf::stretch & s) const;
