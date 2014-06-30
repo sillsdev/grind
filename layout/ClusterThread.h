@@ -53,9 +53,9 @@ class cluster_thread : private std::list<cluster>
 
 	template <typename C, typename R> class _iterator;
 	class _span;
-	class run;
 
 public:
+	class run;
 	typedef	std::list<run>	runs_t;
 
 	// Member types
@@ -100,7 +100,7 @@ public:
 	void get_stretch_ratios(glyf::stretch & s) const;
 	void			trim_trailing_whitespace(const PMReal letter_space);
 	void			merge_runs();
-	void			open_run(IDrawingStyle * const ds, PMReal height);
+	void			push_run(run & r);
 	void			push_back(const value_type & val);
 
 private:
@@ -208,16 +208,23 @@ class cluster_thread::run : public cluster_thread::_span
 								_h;
 
 protected:
-	struct run_ops
+	struct ops
 	{
-		virtual bool render(cluster_thread::run const & run, IWaxGlyphs & glyphs);
+		virtual bool			render(cluster_thread::run const & run, IWaxGlyphs & glyphs) const;
+		virtual void			destroy();
+		virtual const ops *		clone() const;
 	};
+	const ops * _ops;
 
-	static run_ops ops;
-	run_ops * _ops;
+
+	run(IDrawingStyle * const ds, PMReal height, base_t::iterator f, base_t::iterator l, const ops &);
+	run(IDrawingStyle * const ds, PMReal height, base_t::iterator f, base_t::iterator l);
+
+	PMReal & height();
 
 public:
-	run(IDrawingStyle * const ds, PMReal height, base_t::iterator f, base_t::iterator l);
+	run(const run &);
+	virtual ~ run();
 
 	// Operations
 	bool			joinable(run const & rhs) const;
@@ -233,6 +240,8 @@ public:
 	void calculate_stretch(glyf::stretch const & js, glyf::stretch & s) const;
 	void apply_desired_widths();
 	void adjust_widths(PMReal fill_space, PMReal word_space, PMReal letter_space, PMReal glyph_scale);
+private:
+	static ops _default_ops;
 };
 
 
@@ -300,9 +309,13 @@ cluster_thread::const_iterator cluster_thread::trailing_whitespace() const
 }
 
 inline
-void cluster_thread::open_run(IDrawingStyle * const ds, PMReal height)
+void cluster_thread::push_run(run & r)
 {
-	_runs.push_back(run(ds, height, base_t::end(), base_t::end()));
+	r._b = _runs.back().end();
+	r._e = base_t::end();
+	r._s = std::distance(r._b,r._e);
+
+	_runs.push_back(r);
 }
 
 
@@ -310,8 +323,20 @@ void cluster_thread::open_run(IDrawingStyle * const ds, PMReal height)
 /* Inline functions for cluster_thread::run
 */
 inline
+cluster_thread::run::run(IDrawingStyle * const ds, PMReal height, base_t::iterator f, base_t::iterator l, const ops & rops) 
+: _span(f,l), _ds(ds), _h(height), _ops(&rops) 
+{
+}
+
+inline
 cluster_thread::run::run(IDrawingStyle * const ds, PMReal height, base_t::iterator f, base_t::iterator l) 
-: cluster_thread::_span(f,l), _ds(ds), _h(height), _ops(&ops) 
+: _span(f,l), _ds(ds), _h(height), _ops(&_default_ops) 
+{
+}
+
+inline
+cluster_thread::run::run(const run & rhs) 
+: _span(rhs), _ds(rhs._ds), _h(rhs._h), _ops(rhs._ops->clone()) 
 {
 }
 
@@ -338,6 +363,12 @@ PMReal cluster_thread::run::width() const
 
 inline
 PMReal cluster_thread::run::height() const
+{
+	return _h;
+}
+
+inline
+PMReal & cluster_thread::run::height()
 {
 	return _h;
 }

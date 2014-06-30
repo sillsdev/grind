@@ -44,13 +44,13 @@ THE SOFTWARE.
 using namespace nrsc;
 
 
-run * inline_object::clone_empty() const
-{
-	return new inline_object();
-}
+//run * inline_object::clone_empty() const
+//{
+//	return new inline_object();
+//}
 
 
-bool inline_object::layout_span(TextIterator ti, size_t span)
+bool inline_object::layout_span(cluster_thread & thread, TextIterator ti, size_t span)
 {
 	InterfacePtr<const ITextModel> model(ti.QueryTextModel());
 	if (model == nil)
@@ -70,34 +70,45 @@ bool inline_object::layout_span(TextIterator ti, size_t span)
 	if (graphic == nil)
 		return false;
 
-	_inline_UID_ref = ::GetUIDRef(graphic);
+	const_cast<ops *>(static_cast<const ops *>(_ops))->inline_UID_ref = ::GetUIDRef(graphic);
 	PMRect inline_bounding_box = graphic->GetStrokeBoundingBox();
 
 	// Inline geometry is relative to the baseline of the text. Don't want to add stretch
-	cluster * cl = open_cluster();
-	_height = -inline_bounding_box.Top();
-	cl->add_glyf(glyf(kInvalidGlyphID, glyf::fixed, inline_bounding_box.Width()));
-	cl->add_chars();
+	height() = -inline_bounding_box.Top();
+	cluster cl;
+	cl.add_glyf(glyf(kInvalidGlyphID, glyf::fixed, inline_bounding_box.Width()));
+	cl.add_chars();
+	thread.push_back(cl);
 
 	return true;
 }
 
 
-bool inline_object::render_run(IWaxRun & run) const
+bool inline_object::ops::render(cluster_thread::run const & run, IWaxGlyphs & glyphs) const
 {
 	// Check we have an inline buffered and it's valid;
-	if (size() != 1 || _inline_UID_ref == UIDRef(nil, kInvalidUID))	
+	if (run.size() != 1 || inline_UID_ref == UIDRef(nil, kInvalidUID))	
 		return false;
 
-	InterfacePtr<IInlineGraphic> graphic(&run, UseDefaultIID());
+	InterfacePtr<IInlineGraphic> graphic(&glyphs, UseDefaultIID());
 	if (graphic == nil)	return false;
 
-	graphic->SetGraphic(_inline_UID_ref);
+	graphic->SetGraphic(inline_UID_ref);
 
-	InterfacePtr<IWaxGlyphs> glyphs(&run, UseDefaultIID());
-	if (glyphs == nil)	return false;
-
-	glyphs->AddGlyph(front().front().id(), ToFloat(front().width()));
+	glyphs.AddGlyph(run.front().front().id(), ToFloat(run.front().width()));
 
 	return true;
 }
+
+
+void inline_object::ops::destroy()
+{
+	delete this;
+}
+
+
+const cluster_thread::run::ops * inline_object::ops::clone() const
+{
+	return new ops(*this);
+}
+

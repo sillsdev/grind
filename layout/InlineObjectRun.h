@@ -40,34 +40,45 @@ namespace nrsc
 
 class inline_object : public run
 {
-	UIDRef	_inline_UID_ref;
+	struct ops : public cluster_thread::run::ops
+	{
+		UIDRef inline_UID_ref;
 
-	inline_object();
+		ops();
+
+		virtual bool			render(cluster_thread::run const & run, IWaxGlyphs & glyphs) const;
+		virtual void			destroy();
+		virtual const cluster_thread::run::ops *	clone() const;
+	};
+
+//	UIDRef	_inline_UID_ref;
+
+//	inline_object();
 
 	// Prevent automatic copy-ctor and assignment generation
-	inline_object(const inline_object &);
-	inline_object & operator = (const inline_object &);
+	//inline_object(const inline_object &);
+	//inline_object & operator = (const inline_object &);
 
-	virtual bool  layout_span(TextIterator first, size_t span);
-	virtual bool  render_run(IWaxRun & run) const;
-	virtual run * clone_empty() const;
+	virtual bool  layout_span(cluster_thread & thread, TextIterator first, size_t span);
 
 public:
 	inline_object(IDrawingStyle * ds);
 };
 
 
-inline
-inline_object::inline_object()
-: _inline_UID_ref(nil, kInvalidUID)
-{
-}
 
 inline
 inline_object::inline_object(IDrawingStyle * ds)
-: run(ds),
-  _inline_UID_ref(nil, kInvalidUID)
+: run(ds, *new ops())
 {
 }
+
+
+inline
+inline_object::ops::ops() 
+: inline_UID_ref(nil, kInvalidUID)
+{
+}
+
 
 } // end of namespace nrsc

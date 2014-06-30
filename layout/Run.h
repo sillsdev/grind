@@ -31,7 +31,7 @@ THE SOFTWARE.
 // Interface headers
 // Library headers
 // Module header
-#include "Box.h"
+#include "ClusterThread.h"
 
 // Forward declarations
 class TextIterator;
@@ -45,125 +45,135 @@ namespace nrsc
 {
 
 
-class run : protected std::list<cluster>
+class run : public cluster_thread::run
 {
 	typedef std::list<cluster>	base_t;
 
 	// Hide copy constructor and assignment operator.
-	run(const run&);
-	run & operator = (const run &);
+	//run(const run&);
+	//run & operator = (const run &);
 
-	void run::layout_span_with_spacing(TextIterator &, const TextIterator &, PMReal, glyf::justification_t);
-	size_t num_glyphs() const;
+	void layout_span_with_spacing(cluster_thread & thread, TextIterator &, const TextIterator &, PMReal, glyf::justification_t);
+	//size_t num_glyphs() const;
 
-	base_t::iterator	_trailing_ws;
-	PMReal				_extra_scale;
+	//base_t::iterator	_trailing_ws;
+	//PMReal				_extra_scale;
 
 protected:
-	run();
+	void	add_glue(cluster_thread & thread, glyf::justification_t level, PMReal width, cluster::penalty::type bw=cluster::penalty::whitespace);
+	void	add_letter(cluster_thread & thread, int glyph_id, PMReal width, cluster::penalty::type bw=cluster::penalty::letter, bool to_cluster=false);
 
-	void	add_glue(glyf::justification_t level, PMReal width, cluster::penalty::type bw=cluster::penalty::whitespace);
-	void	add_letter(int glyph_id, PMReal width, cluster::penalty::type bw=cluster::penalty::letter, bool to_cluster=false);
+	run(IDrawingStyle * ds);
+	run(IDrawingStyle * ds, const cluster_thread::run::ops &);
 
-	run(IDrawingStyle *);
-
-	virtual bool	layout_span(TextIterator first, size_t span) = 0;
-	virtual bool	render_run(IWaxGlyphs & run) const;
-	virtual run	  * clone_empty() const = 0;
+	virtual bool	layout_span(cluster_thread & thread, TextIterator first, size_t span) = 0;
 
 
-	InterfacePtr<IDrawingStyle>	_drawing_style;
-	PMReal			_height;
+	//InterfacePtr<IDrawingStyle>	_drawing_style;
+	//PMReal			_height;
 	TextIndex		_span;
 
 public:
 	virtual ~run() throw();
 
-	// Member types
-	using base_t::const_iterator;
-	using base_t::iterator;
-	using base_t::difference_type;
-	using base_t::size_type;
-	using base_t::const_reference;
-	using base_t::reference;
+	//// Member types
+	//using base_t::const_iterator;
+	//using base_t::iterator;
+	//using base_t::difference_type;
+	//using base_t::size_type;
+	//using base_t::const_reference;
+	//using base_t::reference;
 
-	//Iterators
-	using base_t::begin;
-	using base_t::end;
-	iterator		trailing_whitespace();
-	const_iterator	trailing_whitespace() const;
+	////Iterators
+	//using base_t::begin;
+	//using base_t::end;
+	//iterator		trailing_whitespace();
+	//const_iterator	trailing_whitespace() const;
 
-	// Capacity
-	using base_t::empty;
-	using base_t::size;
-	size_t span() const;
+	//// Capacity
+	//using base_t::empty;
+	//using base_t::size;
+	//size_t span() const;
 
-	// Element access
-	using base_t::front;
-	using base_t::back;
+	//// Element access
+	//using base_t::front;
+	//using base_t::back;
 
-	// Modifiers
-	using base_t::clear;
-	pointer	open_cluster();
-	run * split(const_iterator position);
+	//// Modifiers
+	//using base_t::clear;
+	//pointer	open_cluster();
+	//run * split(const_iterator position);
 
-	// Operations
-	bool			fill(TextIterator & ti, TextIndex span);
-	bool			joinable(const run & rhs) const;
-	run	&			join(run & rhs);
-	
-	PMReal			width() const;
-	PMReal			height() const;
+	//// Operations
+	bool			fill(cluster_thread & thread, TextIterator & ti, TextIndex span);
+	//bool			joinable(const run & rhs) const;
+	//run	&			join(run & rhs);
+	//
+	//PMReal			width() const;
+	//PMReal			height() const;
 
-	IWaxRun		  * wax_run() const;
-	IDrawingStyle * get_style() const;
+	//IWaxRun		  * wax_run() const;
+	//IDrawingStyle * get_style() const;
 
-	void get_stretch_ratios(glyf::stretch &) const;
-	void calculate_stretch(const glyf::stretch & js, glyf::stretch & s) const;
-	void apply_desired_widths();
-	void adjust_widths(PMReal fill_space, PMReal word_space, PMReal letter_space, PMReal glyph_scale);
-	void trim_trailing_whitespace(const PMReal letter_space);
-	void fit_trailing_whitespace(const PMReal margin);
+	//void get_stretch_ratios(glyf::stretch &) const;
+	//void calculate_stretch(const glyf::stretch & js, glyf::stretch & s) const;
+	//void apply_desired_widths();
+	//void adjust_widths(PMReal fill_space, PMReal word_space, PMReal letter_space, PMReal glyph_scale);
+	//void trim_trailing_whitespace(const PMReal letter_space);
+	//void fit_trailing_whitespace(const PMReal margin);
 
 };
 
-
 inline
-size_t run::span() const
+run::run(IDrawingStyle * ds)
+: cluster_thread::run(ds, ds->GetLeading(),base_t::iterator(), base_t::iterator()),
+  _span(0)
 {
-	return _span;
-
 }
 
 inline
-PMReal run::height() const
+run::run(IDrawingStyle * ds, const cluster_thread::run::ops & rops)
+: cluster_thread::run(ds, ds->GetLeading(),base_t::iterator(), base_t::iterator(), rops),
+  _span(0)
 {
-	return _height;
 }
 
-inline
-IDrawingStyle  * run::get_style() const
-{
-	return _drawing_style;
-}
-
-inline
-run::pointer run::open_cluster()
-{
-	resize(size()+1);
-	return &back();
-}
-
-inline
-run::iterator run::trailing_whitespace()
-{
-	return _trailing_ws;
-}
-
-inline
-run::const_iterator run::trailing_whitespace() const
-{
-	return _trailing_ws;
-}
+//inline
+//size_t run::span() const
+//{
+//	return _span;
+//
+//}
+//
+//inline
+//PMReal run::height() const
+//{
+//	return _height;
+//}
+//
+//inline
+//IDrawingStyle  * run::get_style() const
+//{
+//	return _drawing_style;
+//}
+//
+//inline
+//run::pointer run::open_cluster()
+//{
+//	resize(size()+1);
+//	return &back();
+//}
+//
+//inline
+//run::iterator run::trailing_whitespace()
+//{
+//	return _trailing_ws;
+//}
+//
+//inline
+//run::const_iterator run::trailing_whitespace() const
+//{
+//	return _trailing_ws;
+//}
 
 } // end of namespace nrsc

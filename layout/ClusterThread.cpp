@@ -27,6 +27,7 @@ THE SOFTWARE.
 #include "VCPlugInHeaders.h"
 #include "IJustificationStyle.h"
 #include "IWaxGlyphs.h"
+#include "IWaxGlyphsME.h"
 #include "IWaxRenderData.h"
 #include "IWaxRun.h"
 // Library headers
@@ -61,6 +62,12 @@ size_t cluster_thread::_span::num_glyphs() const
 		n += cl_i->size();
 
 	return n;
+}
+
+
+cluster_thread::run::~run()
+{
+	const_cast<ops *>(_ops)->destroy();
 }
 
 
@@ -192,13 +199,71 @@ void cluster_thread::fit_trailing_whitespace(const PMReal margin)
 void cluster_thread::push_back(const value_type & val)
 {
 	base_t::iterator cl = insert(base_t::end(), val);
-	runs_t::iterator lr = --_runs.end();
 
-	if (lr->empty())
-	{
-		lr->_b = cl;
-		(--lr)->_e = cl;
-	}
-	++lr->_s;
+	if (base_t::end() == _runs.back().end())
+		_runs.back()._e = cl;
 }
 
+
+bool cluster_thread::run::ops::render(const nrsc::cluster_thread::run &run, IWaxGlyphs &glyphs) const
+{
+	const size_t num = run.num_glyphs();
+	float * x_offs = new float[num],
+		  * y_offs = new float[num],
+		  * widths = new float[num];
+
+	//Assemble glyphs
+	float * xo = x_offs,
+		  * yo = y_offs,
+		  * w  = widths;
+	for (const_iterator cl_i = run.begin(); cl_i != run.end(); ++cl_i)
+	{
+		const cluster & cl = *cl_i;
+		for (cluster::const_iterator g = cl.begin(); g != cl.end(); ++g, ++w, ++xo, ++yo)
+		{
+			*w = 0;
+			*xo = ToFloat(g->pos().X());
+			*yo = ToFloat(g->pos().Y());
+			glyphs.AddGlyph(g->id(), ToFloat(g->advance()));
+		}
+	}
+
+	// Position shifted glyphs
+	InterfacePtr<IWaxGlyphsME> glyphs_me(&glyphs, UseDefaultIID());
+	if (glyphs_me != nil)
+		glyphs_me->AddGlyphMEData(num, x_offs, y_offs, widths);
+
+	// Do the mappings
+	int	i  = 0, 
+		gi = 0;
+	for (const_iterator cl_i = run.begin(); cl_i != run.end(); ++cl_i)
+	{
+		const cluster & cl = *cl_i;
+		
+		glyphs.AddMappingWidth(cl.width());
+		glyphs.AddMappingRange(i++, gi, cl.size());
+		for (unsigned char n = cl.span()-1; n; --n, ++i)
+		{
+			glyphs.AddMappingWidth(0);
+			glyphs.AddMappingRange(i, gi, cl.size());
+		}
+		gi += cl.size();
+	}
+
+	delete [] x_offs;
+	delete [] y_offs;
+	delete [] widths;
+
+	return true;
+}
+
+
+void cluster_thread::run::ops::destroy()
+{
+}
+
+
+const cluster_thread::run::ops * cluster_thread::run::ops::clone() const
+{
+	return this;
+}

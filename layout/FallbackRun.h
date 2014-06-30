@@ -40,24 +40,24 @@ namespace nrsc
 
 class fallback_run : public run
 {
-	fallback_run();
+//	fallback_run();
 
 	// Prevent automatic copy-ctor and assignment generation
-	fallback_run(const fallback_run &);
-	fallback_run & operator = (const fallback_run &);
+	//fallback_run(const fallback_run &);
+	//fallback_run & operator = (const fallback_run &);
 
-	virtual bool layout_span(TextIterator first, size_t span);
-	virtual run * clone_empty() const;
+	virtual bool layout_span(cluster_thread & thread, TextIterator first, size_t span);
+//	virtual run * clone_empty() const;
 
 public:
 	fallback_run(IDrawingStyle * ds);
 };
 
 
-inline
-fallback_run::fallback_run()
-{
-}
+//inline
+//fallback_run::fallback_run()
+//{
+//}
 
 inline
 fallback_run::fallback_run(IDrawingStyle * ds)

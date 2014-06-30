@@ -82,19 +82,19 @@ namespace
 }
 
 
-run * graphite_run::clone_empty() const
-{
-	return new graphite_run();
-}
+//run * graphite_run::clone_empty() const
+//{
+//	return new graphite_run();
+//}
 
 
-bool graphite_run::layout_span(TextIterator ti, size_t span)
+bool graphite_run::layout_span(cluster_thread & thread, TextIterator ti, size_t span)
 {
 	if (span ==0)
 		return true;
 
 	// Make a graphite font object.
-	gr_font *grfont = gr_make_font(ToFloat(_drawing_style->GetEmSpaceWidth(false)), _face);
+	gr_font *grfont = gr_make_font(ToFloat(get_style()->GetEmSpaceWidth(false)), _face);
 	if (grfont == nil)
 		return false;
 
@@ -111,8 +111,9 @@ bool graphite_run::layout_span(TextIterator ti, size_t span)
 
 
 	// Add the glyphs with their natural widths
-	const PMReal y_pos_scale = _drawing_style->GetYScale() / _drawing_style->GetXScale();
-	cluster * cl = open_cluster();
+	const PMReal y_pos_scale = get_style()->GetYScale() / get_style()->GetXScale();
+	thread.push_back(cluster());
+	cluster * cl = &thread.back(); 
 	unsigned int	cl_before = gr_cinfo_base(gr_seg_cinfo(seg, gr_slot_before(gr_seg_first_slot(seg)))), 
 					cl_after  = gr_cinfo_base(gr_seg_cinfo(seg, gr_slot_after(gr_seg_first_slot(seg))));
 	float predicted_orign = 0.0;
@@ -129,7 +130,8 @@ bool graphite_run::layout_span(TextIterator ti, size_t span)
 			cl->break_penalty() = penalty(resolve_penalty(seg, cl_after));
 
 			// Open a fresh one.
-			cl = open_cluster();
+			thread.push_back(cluster());
+			cluster * cl = &thread.back(); 
 			cl_before = before;
 			predicted_orign = gr_slot_origin_X(s);
 		}

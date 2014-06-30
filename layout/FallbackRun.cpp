@@ -40,22 +40,22 @@ THE SOFTWARE.
 // Project forward declarations
 using namespace nrsc;
 
-run * fallback_run::clone_empty() const
-{
-	return new fallback_run();
-}
+//run * fallback_run::clone_empty() const
+//{
+//	return new fallback_run();
+//}
 
 
-bool fallback_run::layout_span(TextIterator ti, size_t span)
+bool fallback_run::layout_span(cluster_thread & thread, TextIterator ti, size_t span)
 {
 	if (span ==0)
 		return true;
 
-	InterfacePtr<IFontInstance>	font = _drawing_style->QueryFontInstance(kFalse);
+	InterfacePtr<IFontInstance>	font = get_style()->QueryFontInstance(kFalse);
 	if (font == nil)
 		return false;
 
-	const PMReal min_width = _drawing_style->GetEmSpaceWidth(false)/48.0;
+	const PMReal min_width = get_style()->GetEmSpaceWidth(false)/48.0;
 	WideString	chars;
 	ti.AppendToStringAndIncrement(&chars, span);
 
@@ -73,15 +73,15 @@ bool fallback_run::layout_span(TextIterator ti, size_t span)
 		const int gid = gp->GetGlyphID();
 		
 		if (u_isspace(*c))
-			add_glue(glyf::space, _drawing_style->GetSpaceWidth(), u_isWhitespace(*c) ? cluster::penalty::word : cluster::penalty::never);
+			add_glue(thread, glyf::space, get_style()->GetSpaceWidth(), u_isWhitespace(*c) ? cluster::penalty::word : cluster::penalty::never);
 		else
 		{
 			PMReal glyph_width = font->GetGlyphWidth(gid);
-			add_letter(gid, glyph_width, cluster::penalty::letter, glyph_width < min_width);
+			add_letter(thread, gid, glyph_width, cluster::penalty::letter, glyph_width < min_width);
 		}
 
 		// Set the kerning.
-		glyf & last_glyf = back().back();
+		glyf & last_glyf = thread.back().back();
 		last_glyf.shift(PMPoint(gp->GetXPosition() - prev_shift, 0));
 		prev_shift = gp->GetXPosition();
 	}

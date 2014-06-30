@@ -43,25 +43,25 @@ class graphite_run : public run
 {
 	const gr_face * const	_face;
 
-	graphite_run();
+//	graphite_run();
 
 	// Prevent automatic copy-ctor and assignment generation
-	graphite_run(const graphite_run &);
-	graphite_run & operator = (const graphite_run &);
+	//graphite_run(const graphite_run &);
+	//graphite_run & operator = (const graphite_run &);
 
-	virtual bool layout_span(TextIterator first, size_t span);
-	virtual run * clone_empty() const;
+	virtual bool layout_span(cluster_thread & thread, TextIterator first, size_t span);
+//	virtual run * clone_empty() const;
 
 public:
 	graphite_run(const gr_face * const, IDrawingStyle * ds);
 };
 
 
-inline
-graphite_run::graphite_run()
-: _face(0)
-{
-}
+//inline
+//graphite_run::graphite_run()
+//: _face(0)
+//{
+//}
 
 inline
 graphite_run::graphite_run(const gr_face * const face, IDrawingStyle * ds)
