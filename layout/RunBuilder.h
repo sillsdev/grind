@@ -45,7 +45,7 @@ class cluster_thread;
 
 
 
-class run_builder
+class run_builder : public cluster_thread::run
 {
 	void	layout_span_with_spacing(TextIterator &, const TextIterator &, PMReal, glyf::justification_t);
 

@@ -55,11 +55,20 @@ void cluster_thread::_span::split_into(base_t::iterator const & i, _span & rhs)
 
 
 
-size_t cluster_thread::_span::num_glyphs() const
+cluster_thread::_span::size_type cluster_thread::_span::num_glyphs() const
 {
-	size_t n = 0;
+	size_type n = 0;
 	for (const_iterator cl_i = begin(); cl_i != end(); ++cl_i)
 		n += cl_i->size();
+
+	return n;
+}
+
+cluster_thread::_span::size_type cluster_thread::_span::span() const
+{
+	size_type n = 0;
+	for (const_iterator cl_i = begin(); cl_i != end(); ++cl_i)
+		n += cl_i->span();
 
 	return n;
 }
@@ -68,6 +77,51 @@ size_t cluster_thread::_span::num_glyphs() const
 cluster_thread::run::~run()
 {
 	const_cast<ops *>(_ops)->destroy();
+}
+
+
+void cluster_thread::run::apply_desired_widths()
+{
+	InterfacePtr<IJustificationStyle>	js(get_style(), UseDefaultIID());
+	const PMReal	space_width = get_style()->GetSpaceWidth();
+
+	adjust_widths(0, js->GetAlteredWordspace()-space_width, js->GetAlteredLetterspace(false), 0);
+}
+
+
+void cluster_thread::run::adjust_widths(PMReal fill_space, PMReal word_space, PMReal letter_space, PMReal glyph_scale)
+{
+	for (iterator cl = begin(), cl_e = end(); cl != cl_e; ++cl)
+	{
+		for (cluster::iterator g = cl->begin(), g_e = cl->end(); g != g_e; ++g)
+		{
+			g->kern(glyph_scale*g->width());
+			g->shift(glyph_scale*g->pos().X());
+
+			switch (g->justification())
+			{
+			case glyf::fill:
+				g->kern(fill_space);
+				break;
+			case glyf::space:
+				g->kern(letter_space + word_space);
+				break;
+			case glyf::letter:
+				g->kern(letter_space);
+				break;
+			case glyf::glyph:
+				g->shift(-letter_space);
+				break;
+			case glyf::fixed:
+				if (g->width() > 0) g->kern(letter_space);
+				break;
+			default: 
+				break;
+			}
+		}
+	}
+
+	extra_scale() = glyph_scale;
 }
 
 
@@ -105,14 +159,19 @@ IWaxRun * cluster_thread::run::wax_run() const
 }
 
 
+void cluster_thread::run::calculate_stretch(glyf::stretch const & js, glyf::stretch & s) const
+{
+	const PMReal	space_width = _ds->GetSpaceWidth();
+
+	for (const_iterator cl = begin(), cl_e = end(); cl != cl_e; ++cl)
+		cl->calculate_stretch(space_width, js, s);
+}
+
+
 void cluster_thread::get_stretch_ratios(glyf::stretch & s) const
 {
 	PMReal min,des,max;
-	InterfacePtr<IJustificationStyle>	js(_runs.front().get_style(), UseDefaultIID());
-
-	s[glyf::fill].min = s[glyf::space].min;
-	s[glyf::fill].max = 1000000.0;
-	s[glyf::fill].num = 0;
+	InterfacePtr<IJustificationStyle>	js(runs().front().get_style(), UseDefaultIID());
 
 	js->GetWordspace(&min, &des, &max);
 	s[glyf::space].min = des - min;
@@ -132,6 +191,34 @@ void cluster_thread::get_stretch_ratios(glyf::stretch & s) const
 	s[glyf::fixed].min = 0;
 	s[glyf::fixed].max = 0;
 	s[glyf::fixed].num = 0;
+
+	s[glyf::fill].min = s[glyf::space].min;
+	s[glyf::fill].max = 1000000.0;
+	s[glyf::fill].num = 0;
+}
+
+
+void cluster_thread::collect_stretch(glyf::stretch & s) const
+{
+	glyf::stretch js = {{0,0},{0,0},{0,0},{0,0},{0,0}};
+	memset(&s, 0, sizeof(glyf::stretch));
+
+	get_stretch_ratios(js);
+
+	// We only want to consider stretch up to trailing whitespace
+	for (runs_t::const_iterator r = runs().begin(), r_e = trailing_whitespace().run_iter(); r != r_e; ++r)
+		r->calculate_stretch(js, s);
+
+	// ... unless the whitespace is a fill character.
+	for (const_iterator cl = trailing_whitespace(), cl_e = end(); cl != cl_e; ++cl)
+	{
+		if (cl->front().justification() != glyf::fill) continue;
+
+		PMReal const space_width = cl.run().get_style()->GetSpaceWidth();
+		s[glyf::fill].min += space_width*js[glyf::fill].min;
+		s[glyf::fill].max += space_width*js[glyf::fill].max;
+		++s[glyf::fill].num;
+	}
 }
 
 
@@ -200,10 +287,13 @@ void cluster_thread::push_back(const value_type & val)
 {
 	base_t::iterator cl = insert(base_t::end(), val);
 
-	if (base_t::end() == _runs.back().end())
+	if (!_runs.empty() && base_t::end() == _runs.back().end())
 		_runs.back()._e = cl;
 }
 
+
+
+cluster_thread::run::ops	cluster_thread::run::_default_ops;
 
 bool cluster_thread::run::ops::render(const nrsc::cluster_thread::run &run, IWaxGlyphs &glyphs) const
 {

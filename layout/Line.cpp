@@ -54,12 +54,6 @@ THE SOFTWARE.
 using namespace nrsc;
 
 
-void tile::clear()
-{
-	for (iterator i=begin(), i_e = end(); i != i_e; ++i)
-		delete *i;
-}
-
 tile::~tile()
 {
 	clear();
@@ -83,7 +77,7 @@ bool tile::fill_by_span(IComposeScanner & scanner, gr_face_cache & faces, TextIn
 		{
 			run * const r = create_run(faces, ds, ti, run_span);
 			if (r == nil)	return false;
-			push_back(r);
+//			push_back(r);
 			r->apply_desired_widths();
 
 			const size_t consumed = r->span();
@@ -100,8 +94,8 @@ bool tile::fill_by_span(IComposeScanner & scanner, gr_face_cache & faces, TextIn
 size_t tile::span() const 
 {
 	size_t s = 0;
-	for (const_iterator r = begin(), r_e = end(); r != r_e; ++r)
-		s += (*r)->span();
+	for (const_iterator cl = begin(), cl_e = end(); cl != cl_e; ++cl)
+		s += cl->span();
 
 	return s;
 }
@@ -109,11 +103,10 @@ size_t tile::span() const
 PMPoint tile::content_dimensions() const
 {
 	PMReal w = 0, h = 0;
-	for (const_iterator r = begin(), r_e = end(); r != r_e; ++r)
-	{
-		w += (*r)->width();
-		h = std::max(h,(*r)->height());
-	}
+	PMReal advance = 0;
+
+	for (run::const_iterator cl = base_t::begin(), cl_e = trailing_whitespace(); cl != cl_e; w += cl->width(), ++cl);
+	for (const_iterator r = begin(), r_e = end(); r != r_e; h = std::max(h, r->height()), ++r);
 
 	return PMPoint(w,h);
 }
@@ -136,25 +129,37 @@ namespace
 
 struct break_point
 {
-	break_point(const tile & t) 
+	break_point(tile & t) 
 	: run(t.begin()), 
-	  cluster((*run)->begin()),  
+	  cluster(run->begin()),  
 	  demerits(std::numeric_limits<float>::infinity()) {}
 
-	void improve(const tile::const_iterator & r, const run::const_iterator & cl, const float d) {
+	void improve(const tile::iterator & r, const run::iterator & cl, const float d) {
 		if (d > demerits) return;
 		run = r; cluster = cl; demerits = d;
 	}
 
-	tile::const_iterator	run;
-	run::const_iterator	cluster;
+	tile::iterator	run;
+	run::iterator	cluster;
 	float			demerits;
 };
+
+
+void tile::fixup_break_weights()
+{
+	//for (run::iterator r = begin(), r_e = end(), prev_cl = (*r)->begin(); r != r_e; ++r)
+	//{
+	//	for (run::iterator cl = (*r)->begin(), cl_ = ++cl, cl_e = (*r)->end(); cl != cl_e; prev_cl = cl++)
+	//	{
+	//	}	
+	//}
+}
+
 
 void tile::break_into(tile & rest)
 {
 	glyf::stretch js, s = {{0,0},{0,0},{0,0},{0,0},{0,0}};
-	front()->get_stretch_ratios(js);
+	get_stretch_ratios(js);
 
 	PMReal			advance = 0;
 	PMReal const	desired = _region.Width();
@@ -163,18 +168,18 @@ void tile::break_into(tile & rest)
 		        fallback = *this;
 	for (iterator r = begin(), r_e = end(); r != r_e; ++r)
 	{
-		PMReal const	desired_adj = desired + InterfacePtr<IJustificationStyle>((*r)->get_style(), UseDefaultIID())->GetAlteredLetterspace(false),
+		PMReal const	desired_adj = desired + InterfacePtr<IJustificationStyle>(r->get_style(), UseDefaultIID())->GetAlteredLetterspace(false),
 						fallback_stretch = desired_adj/1.2;
 
-		if (InterfacePtr<ICompositionStyle>((*r)->get_style(), UseDefaultIID())->GetNoBreak())
+		PMReal const	space_width = r->get_style()->GetSpaceWidth();
+		if (InterfacePtr<ICompositionStyle>(r->get_style(), UseDefaultIID())->GetNoBreak())
 		{
-			advance += (*r)->width();
-			(*r)->calculate_stretch(js, s);
+			advance += r->width();
+			r->calculate_stretch(js, s);
 			continue;
 		}
 		
-		PMReal const	space_width = (*r)->get_style()->GetSpaceWidth();
-		for (run::iterator cl = (*r)->begin(), cl_e = (*r)->end(); cl != cl_e; ++cl)
+		for (run::iterator cl = r->begin(), cl_e = r->end(); cl != cl_e; ++cl)
 		{
 			advance += cl->width();
 			cl->calculate_stretch(space_width, js, s);
@@ -191,75 +196,75 @@ void tile::break_into(tile & rest)
 		}
 	}
 	
-	if (best.cluster == front()->begin())
+	if (best.cluster == front().begin())
 		best = fallback;
 
 	// Walk forwards adding any trailing whitespace
-	for (iterator const r_e = end(); best.run != r_e; best.cluster = (*best.run)->begin())
+	for (iterator const r_e = end(); best.run != r_e; best.cluster = best.run->begin())
 	{
-		while (best.cluster != (*best.run)->end() && (++best.cluster)->whitespace());
-		if (best.cluster != (*best.run)->end() || ++best.run == r_e) break;
+		while (best.cluster != best.run->end() && (++best.cluster)->whitespace());
+		if (best.cluster != best.run->end() || ++best.run == r_e) break;
 	}
 
 	if (advance <= desired || best.run == end())	return;
 
-	if (best.cluster != (*best.run)->end())
-		rest.push_back((*best.run)->split(best.cluster));
-	rest.splice(rest.end(), *this, ++best.run, end());
-
-
+	//if (best.cluster != best.run->end())
+	//	rest.push_back(best.run->split(best.cluster));
+	//rest.splice(rest.end(), *this, ++best.run, end());
+	split(base_t::iterator(best.cluster, best.run));
 }
 
 
 void tile::justify()
 {
-	glyf::stretch js, s = {{0,0},{0,0},{0,0},{0,0},{0,0}};
-	front()->get_stretch_ratios(js);
-
 	// Calculate the stretch values for all the classes.
 	PMReal  width   = content_dimensions().X();
 	PMReal	stretch = _region.Width() - width;
-	PMReal  stretches[5] = {0,0,0,0,0};
+	if (stretch == 0)	return;
 
 	// Collect the stretch
-	for (const_iterator r = begin(), r_e = end(); r != r_e; ++r)
-		(*r)->calculate_stretch(js, s);
+	glyf::stretch total = {{0,0},{0,0},{0,0},{0,0},{0,0}};
+	collect_stretch(total);
 
 	// Drop the last letter as we don't want add letterspace stretch to the
 	// last character on a line.
-	s[glyf::letter].max -= s[glyf::letter].max/s[glyf::letter].num;
-	s[glyf::letter].min -= s[glyf::letter].min/s[glyf::letter].num;
-	--s[glyf::letter].num;
+	total[glyf::letter].max -= total[glyf::letter].max/total[glyf::letter].num;
+	total[glyf::letter].min -= total[glyf::letter].min/total[glyf::letter].num;
+	--total[glyf::letter].num;
 
-	if (stretch == 0)	return;
+	PMReal  stretches[5] = {0,0,0,0,0};
 	if (stretch < 0)
 	{
 		for (int level = glyf::fill; level != glyf::fixed && stretch != 0; ++level)
-			stretch -= stretches[level] = std::max(s[level].min, stretch);
+			stretch -= stretches[level] = std::max(total[level].min, stretch);
 	}
 	else
 	{
 		for (int level = glyf::fill; level != glyf::fixed && stretch != 0; ++level)
-			stretch -= stretches[level] = std::min(s[level].max, stretch);
+			stretch -= stretches[level] = std::min(total[level].max, stretch);
 
 		// How to deal with emergency stretch
 		if (stretch > 0)
-			if (s[glyf::space].num > 0)				stretches[glyf::space]  += stretch;
-			else if (s[glyf::letter].num > 0)		stretches[glyf::letter] += stretch;
+			if (total[glyf::space].num > 0)				stretches[glyf::space]  += stretch;
+			else if (total[glyf::letter].num > 0)		stretches[glyf::letter] += stretch;
 			else return;
 	}
 
-	stretches[glyf::fill]   /= s[glyf::fill].num;
-	stretches[glyf::space]  /= s[glyf::space].num;
-	stretches[glyf::letter] /= s[glyf::letter].num;
+	stretches[glyf::fill]   /= total[glyf::fill].num;
+	stretches[glyf::space]  /= total[glyf::space].num;
+	stretches[glyf::letter] /= total[glyf::letter].num;
 	stretches[glyf::glyph]	/= width;
 
-	// Apply stretch levels to each run.
-	for (iterator r = begin(), r_e = end(); r != r_e; ++r)
-		(*r)->adjust_widths(stretches[glyf::fill], stretches[glyf::space], stretches[glyf::letter], stretches[glyf::glyph]);
+	// Apply stretch levels to each content run
+	for (iterator r = begin(), r_e = trailing_whitespace().run_iter(); r != r_e; ++r)
+		r->adjust_widths(stretches[glyf::fill], stretches[glyf::space], stretches[glyf::letter], stretches[glyf::glyph]);
 
-	if (s[glyf::letter].num)
-		back()->trim_trailing_whitespace(stretches[glyf::letter]);
+	// Apply stretch levels only to fill spaces in trailing whitespace.
+	for (iterator r = trailing_whitespace().run_iter(), r_e = end(); r != r_e; ++r)
+		r->adjust_widths(stretches[glyf::fill], 0, 0, 0);
+
+	if (total[glyf::letter].num)
+		trim_trailing_whitespace(stretches[glyf::letter]);
 }
 
 
@@ -318,12 +323,12 @@ void tile::apply_tab_widths(ICompositionStyle * cs)
 	for (iterator r = begin(), r_e = end(); r != r_e && pos < max_pos; ++r)
 	{
 		// Get this run's font
-		InterfacePtr<IFontInstance>	font = (*r)->get_style()->QueryFontInstance(kFalse);
+		InterfacePtr<IFontInstance>	font = r->get_style()->QueryFontInstance(kFalse);
 		Text::GlyphID target = font->GetGlyphID(ts.GetAlignToChar().GetValue());
 			
 		// Find a tab
-		run::iterator		cl = (*r)->begin();
-		run::iterator const cl_e = (*r)->trailing_whitespace();
+		run::iterator		cl = r->begin();
+		run::iterator const cl_e = &trailing_whitespace().run() == &(*r) ? trailing_whitespace() : r->end();
 
 		do
 		{
@@ -361,10 +366,9 @@ PMReal tile::align_text(const IParagraphComposer::RebuildHelper & helper, IJusti
 {
 	if (empty()) return 0;
 
-	run & last_run = *back();
-	const bool	last_line = last_run.back().break_penalty() == cluster::penalty::mandatory;
+	const bool	last_line = back().back().break_penalty() == cluster::penalty::mandatory;
 
-	last_run.trim_trailing_whitespace(js->GetAlteredLetterspace(false));
+	trim_trailing_whitespace(js->GetAlteredLetterspace(false));
 
 	apply_tab_widths(cs);
 
@@ -436,30 +440,28 @@ PMReal tile::align_text(const IParagraphComposer::RebuildHelper & helper, IJusti
 	default:	
 		break;
 	}
-	last_run.fit_trailing_whitespace(line_white_space);
+	fit_trailing_whitespace(line_white_space);
 
 	return alignment_offset;
 }
 
 
-run * tile::create_run(gr_face_cache &faces, IDrawingStyle * ds, TextIterator & ti, TextIndex span)
+tile::run * tile::create_run(gr_face_cache &faces, IDrawingStyle * ds, TextIterator & ti, TextIndex span)
 {
 	InterfacePtr<IPMFont>			font = ds->QueryFont();
 
 	if (ti.IsNull() || font == nil)
 		return nil;
 
-	run * r = nil;
-
 	switch((*ti).GetValue())
 	{
 	case kTextChar_ObjectReplacementCharacter:
-		r = new inline_object(ds);
-		if (!r)	return nil;
+	{
+		inline_object r(ds);
 
-		r->fill(ti, span);
+		if (!r.fill(*this, ti, span))	return nil;
 		break;
-
+	}
 	default:
 		switch(font->GetFontType())
 		{
@@ -469,33 +471,32 @@ run * tile::create_run(gr_face_cache &faces, IDrawingStyle * ds, TextIterator & 
 			gr_face * const face = faces[font];
 			if (face)
 			{
-				r = new graphite_run(face, ds);
-				if (r && r->fill(ti, span)) break;
-				delete r;
+				graphite_run r(face, ds);
+				if (r.fill(*this, ti, span))	
+					break;
 			}
 		}
 		default:
-			r = new fallback_run(ds);
-			if (r)	r->fill(ti, span);
-			break;
+			fallback_run r(ds);
+			if (!r.fill(*this, ti, span))	return nil;
 		}
 		break;
 	}
 
-	if (!r || r->span() == 0)
+	if (back().empty())
 	{
-		delete r;
+		runs().pop_back();
 		return nil;
 	}
 
-	return r;
+	return static_cast<run *>(&runs().back());
 }
 
 
 void tile::update_line_metrics(line_metrics & lm) const
 {
 	for (const_iterator r = begin(), r_e = end(); r != r_e; ++r)
-		lm += (*r)->get_style();
+		lm += r->get_style();
 }
 
 
@@ -622,11 +623,11 @@ bool nrsc::rebuild_line(gr_face_cache & faces, const IParagraphComposer::Rebuild
 
 		for (tile::iterator r = (*t)->begin(), r_e = (*t)->end(); r != r_e; ++r)
 		{
-			IWaxRun * wr = (*r)->wax_run();
+			IWaxRun * wr = r->wax_run();
 			if (wr == nil)
 				return false;
 			wr->SetXPosition(x);
-			x += (*r)->width();
+			x += r->width();
 			wc->AddRun(wr);
 		}
 	}

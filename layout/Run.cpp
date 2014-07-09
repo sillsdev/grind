@@ -178,8 +178,6 @@ bool run::fill(cluster_thread & thread, TextIterator & ti, TextIndex span)
 	if (start != ti)
 		layout_span(thread, start, ti - start);
 
-	_span += ti - start;
-
 	thread.push_run(*this);
 
 	return true;
@@ -196,7 +194,6 @@ void run::layout_span_with_spacing(cluster_thread & thread, TextIterator & first
 	add_glue(thread, level, width);
 	first = last;
 	++first;
-	_span += span;
 }
 
 
@@ -210,7 +207,6 @@ void run::add_glue(cluster_thread & thread, glyf::justification_t level, PMReal 
 	cl.break_penalty() = bw;
 
 	thread.push_back(cl);
-	++_span;
 }
 
 
@@ -223,7 +219,6 @@ void run::add_letter(cluster_thread & thread, int glyph_id, PMReal width, cluste
 	cl.add_glyf(glyf(glyph_id, to_cluster ? glyf::glyph : glyf::letter, width));
 	cl.add_chars();
 	cl.break_penalty() = bw;
-	++_span;
 }
 
 
@@ -359,31 +354,11 @@ void run::add_letter(cluster_thread & thread, int glyph_id, PMReal width, cluste
 //}
 //
 //
-//void run::calculate_stretch(const glyf::stretch & js, glyf::stretch & s) const
-//{
-//	const PMReal	space_width = _drawing_style->GetSpaceWidth();
-//
-//	for (const_iterator cl = begin(), cl_e = _trailing_ws; cl != cl_e; ++cl)
-//		cl->calculate_stretch(space_width, js, s);
-//
-//	for (const_iterator cl = _trailing_ws, cl_e = end(); cl != cl_e; ++cl)
-//	{
-//		for (cluster::const_iterator g = cl->begin(), g_e = cl->end(); g != g_e; ++g)
-//		{
-//			if (g->justification() != glyf::fill) continue;
-//
-//			s[glyf::fill].min += space_width*js[glyf::fill].min;
-//			s[glyf::fill].max += space_width*js[glyf::fill].max;
-//			++s[glyf::fill].num;
-//		}
-//	}
-//}
-//
-//
+
 //void run::apply_desired_widths()
 //{
-//	InterfacePtr<IJustificationStyle>	js(_drawing_style, UseDefaultIID());
-//	const PMReal	space_width = _drawing_style->GetSpaceWidth();
+//	InterfacePtr<IJustificationStyle>	js(get_style(), UseDefaultIID());
+//	const PMReal	space_width = get_style()->GetSpaceWidth();
 //
 //	adjust_widths(0, js->GetAlteredWordspace()-space_width, js->GetAlteredLetterspace(false), 0);
 //}
@@ -391,7 +366,7 @@ void run::add_letter(cluster_thread & thread, int glyph_id, PMReal width, cluste
 //
 //void run::adjust_widths(PMReal fill_space, PMReal word_space, PMReal letter_space, PMReal glyph_scale)
 //{
-//	for (iterator cl = begin(), cl_e = _trailing_ws; cl != cl_e; ++cl)
+//	for (iterator cl = begin(), cl_e = end(); cl != cl_e; ++cl)
 //	{
 //		for (cluster::iterator g = cl->begin(), g_e = cl->end(); g != g_e; ++g)
 //		{
@@ -421,17 +396,17 @@ void run::add_letter(cluster_thread & thread, int glyph_id, PMReal width, cluste
 //		}
 //	}
 //
-//	for (iterator cl = _trailing_ws, cl_e = end(); cl != cl_e; ++cl)
-//	{
-//		for (cluster::iterator g = cl->begin(), g_e = cl->end(); g != g_e; ++g)
-//		{
-//			if (g->justification() != glyf::fill) continue;
+//	//for (iterator cl = _trailing_ws, cl_e = end(); cl != cl_e; ++cl)
+//	//{
+//	//	for (cluster::iterator g = cl->begin(), g_e = cl->end(); g != g_e; ++g)
+//	//	{
+//	//		if (g->justification() != glyf::fill) continue;
 //
-//			g->kern(fill_space);
-//		}
-//	}
+//	//		g->kern(fill_space);
+//	//	}
+//	//}
 //
-//	_extra_scale = glyph_scale;
+//	extra_scale() = glyph_scale;
 //}
 //
 //

@@ -25,13 +25,13 @@ THE SOFTWARE.
 #pragma once
 
 // Language headers
-#include <list>
 // Interface headers
 #include <IParagraphComposer.h>
 // Library headers
 #include <PMRect.h>
 #include <PMReal.h>
 // Module header
+#include "ClusterThread.h"
 
 // Forward declarations
 class PMReal;
@@ -51,9 +51,9 @@ struct	line_metrics;
 class	run;
 class   tiler;
 
-class tile : private std::list<run*>
+class tile : private cluster_thread
 {
-	typedef std::list<run*>	base_t;
+	typedef cluster_thread	base_t;
 
 	PMRect	_region;
 
@@ -62,25 +62,36 @@ class tile : private std::list<run*>
 	tile & operator = (const tile &);
 
 
-	static run    * create_run(gr_face_cache & faces, IDrawingStyle * ds, TextIterator & ti, TextIndex span);
+	run *		create_run(gr_face_cache & faces, IDrawingStyle * ds, TextIterator & ti, TextIndex span);
+	void		fixup_break_weights();
 
 public:
 	tile(const PMRect & region=PMRect());
 	virtual ~tile() throw();
 
 	// Member types
-	using base_t::const_iterator;
-	using base_t::iterator;
-	using base_t::difference_type;
-	using base_t::size_type;
+	typedef base_t::runs_t::const_iterator			const_iterator;
+	typedef base_t::runs_t::iterator				iterator;
+	typedef base_t::runs_t::const_reverse_iterator	const_reverse_iterator;
+	typedef base_t::runs_t::reverse_iterator		reverse_iterator;
+	typedef base_t::runs_t::difference_type			difference_type;
+	typedef base_t::runs_t::size_type				size_type;
+	typedef base_t::runs_t::reference				reference;
+	typedef base_t::runs_t::const_reference			const_reference;
 
 	//Iterators
-	using base_t::begin;
-	using base_t::end;
+	iterator		begin()					{ return runs().begin(); }
+	const_iterator	begin() const			{ return runs().begin(); }
+	iterator		end()					{ return runs().end(); }
+	const_iterator	end() const				{ return runs().end(); }
+	reverse_iterator 		rbegin()		{ return runs().rbegin(); }
+	const_reverse_iterator 	rbegin() const	{ return runs().rbegin(); }
+	reverse_iterator 		rend()			{ return runs().rend(); }
+	const_reverse_iterator 	rend() const	{ return runs().rend(); }
 
 	// Capacity
-	using base_t::empty;
-	using base_t::size;
+	bool		empty() const	{ return runs().empty(); }
+	size_type	size() const	{ return runs().size(); }
 	size_t	span() const;
 
 	// Geometry
@@ -89,13 +100,17 @@ public:
 	PMPoint	    dimensions() const;
 
 	// Element access
-	using base_t::front;
-	using base_t::back;
+	reference		front()			{ return runs().front(); }
+	const_reference	front() const	{ return runs().front(); }
+	reference		back()			{ return runs().back(); }
+	const_reference	back() const	{ return runs().back(); }
+
 
 	// Modifiers
-	using base_t::push_front;
-	using base_t::push_back;
-	void	clear();
+//	using base_t::push_front;
+//	using base_t::runs_t::push_back;
+	using base_t::clear;
+
 	bool	fill_by_span(IComposeScanner & scanner, gr_face_cache & faces, TextIndex offset, TextIndex span);
 
 	// Operations

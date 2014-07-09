@@ -116,7 +116,6 @@ public:
 	//IDrawingStyle * get_style() const;
 
 	//void get_stretch_ratios(glyf::stretch &) const;
-	//void calculate_stretch(const glyf::stretch & js, glyf::stretch & s) const;
 	//void apply_desired_widths();
 	//void adjust_widths(PMReal fill_space, PMReal word_space, PMReal letter_space, PMReal glyph_scale);
 	//void trim_trailing_whitespace(const PMReal letter_space);

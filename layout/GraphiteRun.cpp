@@ -131,7 +131,7 @@ bool graphite_run::layout_span(cluster_thread & thread, TextIterator ti, size_t 
 
 			// Open a fresh one.
 			thread.push_back(cluster());
-			cluster * cl = &thread.back(); 
+			cl = &thread.back(); 
 			cl_before = before;
 			predicted_orign = gr_slot_origin_X(s);
 		}

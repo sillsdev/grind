@@ -58,6 +58,9 @@ public:
 	class run;
 	typedef	std::list<run>	runs_t;
 
+	// Constructor/destructors
+	cluster_thread();
+
 	// Member types
 	typedef _iterator<base_t::iterator, runs_t::iterator>				iterator;
 	typedef _iterator<base_t::const_iterator, runs_t::const_iterator>	const_iterator;
@@ -87,21 +90,26 @@ public:
 	using base_t::back;
 
 	// Modifiers
+	void			clear();
 	cluster_thread	split(iterator const &);
 	void			fit_trailing_whitespace(const PMReal margin);
 
 	// Properties
-	PMPoint			dimensions() const;
 	iterator		trailing_whitespace();
 	const_iterator	trailing_whitespace() const;
 	const runs_t &	runs() const;
+	size_type		span() const;
+	void			get_stretch_ratios(glyf::stretch & s) const;
+	void			collect_stretch(glyf::stretch & s) const;
 
 	// Operations
-	void get_stretch_ratios(glyf::stretch & s) const;
-	void			trim_trailing_whitespace(const PMReal letter_space);
+	void			trim_trailing_whitespace(PMReal const letter_space);
 	void			merge_runs();
 	void			push_run(run & r);
 	void			push_back(const value_type & val);
+
+protected:
+	runs_t & runs();
 
 private:
 	runs_t				_runs;
@@ -115,8 +123,11 @@ private:
 	track of the current clusters run.
 */
 template<typename C, typename R>
-class cluster_thread::_iterator : public std::iterator<typename std::iterator_traits<C>::iterator_category,
-													   typename std::iterator_traits<C>::value_type>
+class cluster_thread::_iterator : public std::iterator<typename C::iterator_category, 
+													   typename C::value_type,
+													   typename C::difference_type,
+													   typename C::pointer,
+													   typename C::reference>
 {
 	typedef std::iterator<typename std::iterator_traits<C>::iterator_category, typename std::iterator_traits<C>::value_type> base_t;
 	C _cl;
@@ -128,8 +139,8 @@ public:
 	bool	operator==(const _iterator<C,R> & rhs) const	{ return _cl.operator==(rhs._cl); }
 	bool	operator!=(const _iterator<C,R> & rhs) const	{ return _cl.operator!=(rhs._cl); }
 
-	reference	operator*() const 		{ return _cl.operator*(); }
-	pointer 	operator->() const 		{ return _cl.operator->(); }
+	reference			operator*() const 		{ return _cl.operator*(); }
+	pointer				operator->() const 		{ return _cl.operator->(); }
 
 	_iterator<C,R> & 	operator++() 		{ if (++_cl == _r->end()) ++_r; return *this; }
 	_iterator<C,R> & 	operator++(int) 	{ _iterator<C,R> tmp = *this; operator++(); return tmp; }
@@ -138,6 +149,7 @@ public:
 	_iterator<C,R> & 	operator--(int)		{ _iterator<C,R> tmp = *this; operator--(); return tmp; }
 
 	typename R::reference	run() const			{ return *_r; }
+	const R	&				run_iter() const	{ return _r; }
 
 	operator C () const { return _cl; }
 
@@ -221,6 +233,7 @@ protected:
 	run(IDrawingStyle * const ds, PMReal height, base_t::iterator f, base_t::iterator l);
 
 	PMReal & height();
+	PMReal & extra_scale();
 
 public:
 	run(const run &);
@@ -236,7 +249,7 @@ public:
 	IWaxRun		  * wax_run() const;
 	IDrawingStyle * get_style() const;
 
-	void get_stretch_ratios(glyf::stretch &) const;
+//	void get_stretch_ratios(glyf::stretch &) const;
 	void calculate_stretch(glyf::stretch const & js, glyf::stretch & s) const;
 	void apply_desired_widths();
 	void adjust_widths(PMReal fill_space, PMReal word_space, PMReal letter_space, PMReal glyph_scale);
@@ -248,6 +261,12 @@ private:
 
 /* Inline functions for cluster_thread
 */
+inline
+cluster_thread::cluster_thread()
+: _trailing_ws_run(_runs.end())
+{
+}
+
 inline
 cluster_thread::iterator cluster_thread::begin()
 {
@@ -297,6 +316,25 @@ cluster_thread::const_reverse_iterator cluster_thread::rend() const
 }
 
 inline
+void cluster_thread::clear()
+{
+	_runs.clear();
+	base_t::clear();
+}
+
+inline 
+cluster_thread::runs_t & cluster_thread::runs()
+{
+	return _runs;
+}
+
+inline 
+const cluster_thread::runs_t & cluster_thread::runs() const
+{
+	return _runs;
+}
+
+inline
 cluster_thread::iterator cluster_thread::trailing_whitespace()
 {
 	return iterator(_trailing_ws_run->begin(), _trailing_ws_run);
@@ -311,7 +349,7 @@ cluster_thread::const_iterator cluster_thread::trailing_whitespace() const
 inline
 void cluster_thread::push_run(run & r)
 {
-	r._b = _runs.back().end();
+	r._b = !_runs.empty() ? _runs.back().end() : base_t::begin();
 	r._e = base_t::end();
 	r._s = std::distance(r._b,r._e);
 
@@ -365,6 +403,12 @@ inline
 PMReal cluster_thread::run::height() const
 {
 	return _h;
+}
+
+inline
+PMReal & cluster_thread::run::extra_scale()
+{
+	return _extra_scale;
 }
 
 inline

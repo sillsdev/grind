@@ -142,7 +142,7 @@ private:
 	typedef std::vector<glyf>	base_t;
 
 	unsigned char	_span;
-	float				_penalty;
+	float			_penalty;
 
 public:
 	// Member types
