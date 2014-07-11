@@ -25,6 +25,7 @@ THE SOFTWARE.
 // Language headers
 // Interface headers
 #include "VCPlugInHeaders.h"
+#include <IComposeScanner.h>
 #include <IDrawingStyle.h>
 #include <IParcel.h>
 #include <IPMFont.h>
@@ -69,6 +70,24 @@ line_metrics & line_metrics::operator +=(const IDrawingStyle * const ds)
 }
 
 
+line_metrics & line_metrics::operator *=(int n)
+{
+	// multiply tracked line metric values
+	leading		  *= n;
+	ascent		  *= n;
+	cap_height	  *= n;
+	x_height	  *= n;
+	em_box_height *= n;
+	em_box_depth  *= n;
+
+	// TODO: Enable if necessary.
+	//icf_top_inset	   *= n;
+	//icf_bottom_inset *= n;
+
+	return *this;
+}
+
+
 const PMReal tiler::GRID_ALIGNMENT_OFFSET;
 
 
@@ -84,9 +103,15 @@ tiler::tiler(IParagraphComposer::RecomposeHelper & helper)
   _y_offset(helper.GetStartingYPosition()),
   _at_TOP(kFalse),
   _parcel_pos_dependent(kFalse),
+  _drop_lines(1),
+  _drop_elems(1),
   _left_margin(0.0),
   _right_margin(0.0)
 {
+	IComposeScanner	* const scanner = _helper.GetComposeScanner();
+	InterfacePtr<ICompositionStyle> cs(scanner->GetParagraphStyleAt(_helper.GetStartingTextIndex()), UseDefaultIID());
+	
+	cs->GetDropCapInfo(&_drop_elems, &_drop_lines);
 }
 
 
@@ -95,19 +120,14 @@ tiler::~tiler(void)
 }
 
 
-bool tiler::next_line(TextIndex curr_pos, 
-						 const line_metrics & line,
-						 const IDrawingStyle * ds)
+bool tiler::next_line(TextIndex curr_pos, const line_metrics & line)
 {
-	_tiles.clear();
-
-	InterfacePtr<ICompositionStyle> cs(ds, UseDefaultIID());
-	InterfacePtr<IGridRelatedStyle> grs(ds, UseDefaultIID());
+	IComposeScanner	* const scanner = _helper.GetComposeScanner();
+	InterfacePtr<ICompositionStyle> cs(scanner->GetParagraphStyleAt(curr_pos), UseDefaultIID());
+	InterfacePtr<IGridRelatedStyle> grs(cs, UseDefaultIID());
 
 	if (cs == nil || grs == nil)	return false;
 
-	// The minimum width of a tile must be big enough to fit the indents plus one
-	// glyph, which we assume to be a capital M.
 	const bool first_line = curr_pos == _helper.GetParagraphStart();
 	_height = line.leading;
 	_y_offset_original = _y_offset;
@@ -115,9 +135,13 @@ bool tiler::next_line(TextIndex curr_pos,
 								? grs->GetGridAlignmentMetric() 
 								: Text::kGANone;
 	const PMReal	line_indent_left  = cs->IndentLeftBody()
-									     + (first_line ? cs->IndentLeftFirst() : 0), 
+									     + (first_line ? cs->IndentLeftFirst() : 0)
+										 + (_tiles.empty() ? 0 : _tiles.back().Right()), 
 					line_indent_right = cs->IndentRightBody(),
-					min_width		  = line.em_box_height + line_indent_left + line_indent_right;
+					// The minimum width of a tile must be big enough to fit 
+					// the indents plus one glyph, which we assume to be a 
+					// capital M.
+					min_width = line.em_box_height + line_indent_left + line_indent_right;
 	do
 	{
 		_TOP_height = line[_TOP_height_metric];
@@ -129,7 +153,7 @@ bool tiler::next_line(TextIndex curr_pos,
 		r->Left() = std::max(r->Left(), _left_margin + line_indent_left);
 		r->Right() = std::min(r->Right(), _right_margin - line_indent_right);
 	}
-
+ 
 	if (_tiles.size() == 0)
 	{
 		_y_offset += line.leading;
@@ -145,7 +169,7 @@ bool tiler::try_get_tiles(PMReal min_width, const line_metrics & line, TextIndex
 {
 	return _helper.GetTiles(min_width,
 						   line.leading,
-						   _TOP_height,
+						   _TOP_height*_drop_lines,
 						   _grid_alignment_metric,	// Grid alignment metric
 						   GRID_ALIGNMENT_OFFSET,	// No offset adjustment 
 						   Text::kRomanLeadingModel,// Leading model
@@ -179,3 +203,16 @@ void tiler::setup_wax_line(IWaxLine * wl, line_metrics & metrics) const
 	wl->SetAtTOF(_at_TOP);
 	wl->SetParcelPositionDependent(_parcel_pos_dependent);
 }
+
+
+bool  tiler::need_retry_line(const line_metrics &lm)
+{
+	const bool retry = lm.leading > _height || (_at_TOP && lm[_TOP_height_metric] > _TOP_height);
+	if (retry)
+	{
+		_y_offset = _y_offset_original;
+		_tiles.clear();
+	}
+	return retry;
+}
+

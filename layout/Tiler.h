@@ -57,7 +57,8 @@ struct line_metrics
 	PMReal & operator [](int k);
 	PMReal operator [](int k) const;
 	line_metrics & operator += (const IDrawingStyle * const);
-	line_metrics & operator += (const IDrawingStyle &);
+//	line_metrics & operator += (const IDrawingStyle &);
+	line_metrics & operator *= (int n);
 };
 
 inline
@@ -73,7 +74,7 @@ line_metrics::line_metrics(const IDrawingStyle * ds)
   icf_top_inset(0.0)
 {
 	if (ds != nil)
-		this->operator += (*ds);
+		this->operator += (ds);
 }
 
 inline
@@ -99,11 +100,11 @@ PMReal line_metrics::operator [](int k) const {
 	return const_cast<line_metrics *>(this)->operator[](k);
 }
 
-inline
-line_metrics & line_metrics::operator += (const IDrawingStyle &ds)
-{
-	return this->operator += (&ds);
-}
+//inline
+//line_metrics & line_metrics::operator += (const IDrawingStyle &ds)
+//{
+//	return this->operator += (&ds);
+//}
 
 
 
@@ -114,15 +115,16 @@ public:
 	tiler(IParagraphComposer::RecomposeHelper & helper);
 	~tiler(void);
 
-	bool	next_line(TextIndex curr_pos, 
-						 const line_metrics & line,
-						 const IDrawingStyle * ds);
+	bool	next_line(TextIndex curr_pos, const line_metrics & line);
 
 	const PMRectCollection	& tiles() const;
 	const ParcelKey			& parcel() const;
 
 	bool	need_retry_line(const line_metrics &);
 	void	setup_wax_line(IWaxLine * wl, line_metrics & metrics) const;
+
+	int		drop_lines() const;
+	int		drop_clusters() const;
 
 private:
 	bool try_get_tiles(PMReal min_width, const line_metrics & line, TextIndex curr_pos);
@@ -140,6 +142,8 @@ private:
 								_y_offset_original;
 	bool16						_at_TOP;
 	bool16						_parcel_pos_dependent;
+	int16						_drop_lines;
+	int16						_drop_elems;
 	PMReal						_left_margin;
 	PMReal						_right_margin;
 };
@@ -157,11 +161,15 @@ const ParcelKey	& tiler::parcel() const
 }
 
 inline
-bool  tiler::need_retry_line(const line_metrics &lm)
+int	tiler::drop_lines() const
 {
-	const bool retry = lm.leading > _height || (_at_TOP && lm[_TOP_height_metric] > _TOP_height);
-	if (retry)	_y_offset = _y_offset_original;
-	return retry;
+	return _drop_lines;
+}
+
+inline
+int	tiler::drop_clusters() const
+{
+	return _drop_elems;
 }
 
 }

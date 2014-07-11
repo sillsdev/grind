@@ -27,24 +27,25 @@ THE SOFTWARE.
 #include "VCPlugInHeaders.h"
 #include <IComposeScanner.h>
 #include <ICompositionStyle.h>
-#include <IDrawingStyle.h>
-#include <IFontInstance.h>
-#include <IHierarchy.h>
+//#include <IDrawingStyle.h>
+//#include <IFontInstance.h>
+//#include <IHierarchy.h>
 #include <IJustificationStyle.h>
-#include <ILayoutUtils.h>
-#include <IPMFont.h>
+//#include <ILayoutUtils.h>
+//#include <IPMFont.h>
 #include <IWaxCollection.h>
 #include <IWaxLine.h>
 #include <IWaxRun.h>
 // Library headers
-#include <TabStop.h>
+//#include <TabStop.h>
 // Module header
-#include "FallbackRun.h"
-#include "GraphiteRun.h"
-#include "GrFaceCache.h"
-#include "InlineObjectRun.h"
+//#include "FallbackRun.h"
+//#include "GraphiteRun.h"
+//#include "GrFaceCache.h"
+//#include "InlineObjectRun.h"
 #include "Line.h"
 #include "Run.h"
+#include "Tile.h"
 #include "Tiler.h"
 
 // Forward declarations
@@ -54,507 +55,79 @@ THE SOFTWARE.
 using namespace nrsc;
 
 
-void tile::clear()
+void line::clear()
 {
-	for (iterator i=begin(), i_e = end(); i != i_e; ++i)
-		delete *i;
-}
-
-tile::~tile()
-{
-	clear();
+	for (iterator t = begin(), t_e = end(); t != t_e; ++t) delete *t;
+	base_t::clear();
 }
 
 
-bool tile::fill_by_span(IComposeScanner & scanner, gr_face_cache & faces, TextIndex offset, TextIndex span)
+void line::update_line_metrics(line_metrics & lm)
 {
-	TextIndex	total_span = 0;
-
-	do
+	for (iterator t = begin(), t_e = end(); t != t_e; ++t)
 	{
-		IDrawingStyle * ds = nil;
-		TextIndex		run_span = 0;
-		TextIterator	ti = scanner.QueryDataAt(offset, &ds, &run_span);
-		if (ti.IsNull())		return true;	// End of line
-		if (ds == nil)			return false;	// Problem
-		if (run_span > span)	run_span = span;
-
-		do
-		{
-			run * const r = create_run(faces, ds, ti, run_span);
-			if (r == nil)	return false;
-			push_back(r);
-			r->apply_desired_widths();
-
-			const size_t consumed = r->span();
-			run_span -= consumed;
-			span	 -= consumed;
-			offset	 += consumed;
-		} while (run_span > 0);
-	} while (span > 0);
-
-	return true;
-}
-
-
-size_t tile::span() const 
-{
-	size_t s = 0;
-	for (const_iterator r = begin(), r_e = end(); r != r_e; ++r)
-		s += (*r)->span();
-
-	return s;
-}
-
-PMPoint tile::content_dimensions() const
-{
-	PMReal w = 0, h = 0;
-	for (const_iterator r = begin(), r_e = end(); r != r_e; ++r)
-	{
-		w += (*r)->width();
-		h = std::max(h,(*r)->height());
-	}
-
-	return PMPoint(w,h);
-}
-
-namespace 
-{
-	inline float total_stretch(const bool stretch, const glyf::stretch & ts) {
-		return ToFloat(stretch ? ts[glyf::space].max + ts[glyf::letter].max + ts[glyf::glyph].max 
-							   : -(ts[glyf::space].min + ts[glyf::letter].min + ts[glyf::glyph].min));
-	}
-
-	inline float badness(const PMReal & r) {
-		return pow(ToFloat(r),3);
-	}
-
-	inline float demerits(const float b, cluster::penalty::type p) {
-		return pow(b,2) + (p < 0 ? -pow(p,2) : pow(p,2));
+		for (tile::const_iterator r = (*t)->begin(), r_e = (*t)->end(); r != r_e; ++r)
+			lm += (*r)->get_style();
 	}
 }
-
-struct break_point
-{
-	break_point(const tile & t) 
-	: run(t.begin()), 
-	  cluster((*run)->begin()),  
-	  demerits(std::numeric_limits<float>::infinity()) {}
-
-	void improve(const tile::const_iterator & r, const run::const_iterator & cl, const float d) {
-		if (d > demerits) return;
-		run = r; cluster = cl; demerits = d;
-	}
-
-	tile::const_iterator	run;
-	run::const_iterator	cluster;
-	float			demerits;
-};
-
-void tile::break_into(tile & rest)
-{
-	glyf::stretch js, s = {{0,0},{0,0},{0,0},{0,0},{0,0}};
-	front()->get_stretch_ratios(js);
-
-	PMReal			advance = 0;
-	PMReal const	desired = _region.Width();
-
-	break_point	best = *this,
-		        fallback = *this;
-	for (iterator r = begin(), r_e = end(); r != r_e; ++r)
-	{
-		PMReal const	desired_adj = desired + InterfacePtr<IJustificationStyle>((*r)->get_style(), UseDefaultIID())->GetAlteredLetterspace(false),
-						fallback_stretch = desired_adj/1.2;
-
-		if (InterfacePtr<ICompositionStyle>((*r)->get_style(), UseDefaultIID())->GetNoBreak())
-		{
-			advance += (*r)->width();
-			(*r)->calculate_stretch(js, s);
-			continue;
-		}
-		
-		PMReal const	space_width = (*r)->get_style()->GetSpaceWidth();
-		for (run::iterator cl = (*r)->begin(), cl_e = (*r)->end(); cl != cl_e; ++cl)
-		{
-			advance += cl->width();
-			cl->calculate_stretch(space_width, js, s);
-
-			const PMReal stretch = desired_adj - advance;
-			const float ts = total_stretch(stretch > 0, s),
-						b = badness(stretch/ts),
-						fb = badness(stretch/(stretch > 0 ? fallback_stretch : ts)),
-						d = demerits(b, cl->break_penalty()),
-						fd = demerits(fb, cl->break_penalty());
-			
-			if (b < 1)	best.improve(r,cl,d);
-			if (fb < 1) fallback.improve(r,cl,fd);
-		}
-	}
-	
-	if (best.cluster == front()->begin())
-		best = fallback;
-
-	// Walk forwards adding any trailing whitespace
-	for (iterator const r_e = end(); best.run != r_e; best.cluster = (*best.run)->begin())
-	{
-		while (best.cluster != (*best.run)->end() && (++best.cluster)->whitespace());
-		if (best.cluster != (*best.run)->end() || ++best.run == r_e) break;
-	}
-
-	if (advance <= desired || best.run == end())	return;
-
-	if (best.cluster != (*best.run)->end())
-		rest.push_back((*best.run)->split(best.cluster));
-	rest.splice(rest.end(), *this, ++best.run, end());
-
-
-}
-
-
-void tile::justify()
-{
-	glyf::stretch js, s = {{0,0},{0,0},{0,0},{0,0},{0,0}};
-	front()->get_stretch_ratios(js);
-
-	// Calculate the stretch values for all the classes.
-	PMReal  width   = content_dimensions().X();
-	PMReal	stretch = _region.Width() - width;
-	PMReal  stretches[5] = {0,0,0,0,0};
-
-	// Collect the stretch
-	for (const_iterator r = begin(), r_e = end(); r != r_e; ++r)
-		(*r)->calculate_stretch(js, s);
-
-	// Drop the last letter as we don't want add letterspace stretch to the
-	// last character on a line.
-	s[glyf::letter].max -= s[glyf::letter].max/s[glyf::letter].num;
-	s[glyf::letter].min -= s[glyf::letter].min/s[glyf::letter].num;
-	--s[glyf::letter].num;
-
-	if (stretch == 0)	return;
-	if (stretch < 0)
-	{
-		for (int level = glyf::fill; level != glyf::fixed && stretch != 0; ++level)
-			stretch -= stretches[level] = std::max(s[level].min, stretch);
-	}
-	else
-	{
-		for (int level = glyf::fill; level != glyf::fixed && stretch != 0; ++level)
-			stretch -= stretches[level] = std::min(s[level].max, stretch);
-
-		// How to deal with emergency stretch
-		if (stretch > 0)
-			if (s[glyf::space].num > 0)				stretches[glyf::space]  += stretch;
-			else if (s[glyf::letter].num > 0)		stretches[glyf::letter] += stretch;
-			else return;
-	}
-
-	stretches[glyf::fill]   /= s[glyf::fill].num;
-	stretches[glyf::space]  /= s[glyf::space].num;
-	stretches[glyf::letter] /= s[glyf::letter].num;
-	stretches[glyf::glyph]	/= width;
-
-	// Apply stretch levels to each run.
-	for (iterator r = begin(), r_e = end(); r != r_e; ++r)
-		(*r)->adjust_widths(stretches[glyf::fill], stretches[glyf::space], stretches[glyf::letter], stretches[glyf::glyph]);
-
-	if (s[glyf::letter].num)
-		back()->trim_trailing_whitespace(stretches[glyf::letter]);
-}
-
-
-
-namespace 
-{
-
-inline 
-bool is_glyph(const int gid, const cluster & cl)
-{
-	return cl.size() == 1 && cl.front().id() == gid;
-}
-
-inline
-bool is_tab(const cluster & cl)
-{
-	return cl.size() == 1 && cl.front().justification() == glyf::tab;
-}
-
-inline
-PMReal process_tab(run::iterator tab, const PMReal pos, const TabStop & ts, const PMReal width, const PMReal align_width)
-{
-	PMReal tab_width = ts.GetPosition() - pos;
-			
-	if (tab_width > 0.0)
-	{
-		switch (ts.GetAlignment())
-		{
-		case TabStop::kTabAlignLeft:	break;
-		case TabStop::kTabAlignCenter:	tab_width -= std::min(width/2, tab_width);		break;
-		case TabStop::kTabAlignRight:	tab_width -= std::min(width, tab_width);		break;
-		case TabStop::kTabAlignChar:	tab_width -= std::min(std::min(align_width, width), tab_width);	break;
-		}
-		glyf & tg = tab->front();
-		tg.kern(tab_width - tg.width());
-	}
-
-	return tab_width;
-}
-
-}
-
-
-
-void tile::apply_tab_widths(ICompositionStyle * cs)
-{
-	PMReal	pos = position().X(),
-			max_pos = pos + dimensions().X();
-	PMReal	width = 0,
-			align_width = std::numeric_limits<float>::max();
-
-	run::iterator	tab;
-	TabStop			ts;
-	ts.SetPosition(pos);
-
-	for (iterator r = begin(), r_e = end(); r != r_e && pos < max_pos; ++r)
-	{
-		// Get this run's font
-		InterfacePtr<IFontInstance>	font = (*r)->get_style()->QueryFontInstance(kFalse);
-		Text::GlyphID target = font->GetGlyphID(ts.GetAlignToChar().GetValue());
-			
-		// Find a tab
-		run::iterator		cl = (*r)->begin();
-		run::iterator const cl_e = (*r)->trailing_whitespace();
-
-		do
-		{
-			for (; cl != cl_e && !is_tab(*cl); width += cl->width(), ++cl)
-			{
-				if (width < align_width && is_glyph(target, *cl))
-					align_width = width;
-			}
-			if (cl == cl_e) break;
-
-			width += process_tab(tab, pos, ts, width, align_width);
-
-			ts = cs->GetTabStopAfter(pos + width);
-			tab = cl++;
-			pos += width;
-			width = 0;
-			align_width = std::numeric_limits<float>::max();
-		} while (cl != cl_e);
-	}
-
-	// End of line is an implicit tab stop
-	process_tab(tab, pos, ts, width, align_width);
-}
-
-
-PageType get_page_type(const IParagraphComposer::RebuildHelper & helper)
-{
-	InterfacePtr<IHierarchy> hierarchy(helper.GetDataBase(), helper.GetParcelFrameUID(), UseDefaultIID());
-	return Utils<ILayoutUtils>()->GetPageType(UIDRef(helper.GetDataBase(),
-													 Utils<ILayoutUtils>()->GetOwnerPageUID(hierarchy)));
-}
-
-
-PMReal tile::align_text(const IParagraphComposer::RebuildHelper & helper, IJustificationStyle * js, ICompositionStyle * cs)
-{
-	if (empty()) return 0;
-
-	run & last_run = *back();
-	const bool	last_line = last_run.back().break_penalty() == cluster::penalty::mandatory;
-
-	last_run.trim_trailing_whitespace(js->GetAlteredLetterspace(false));
-
-	apply_tab_widths(cs);
-
-	PMReal	alignment_offset = 0,
-			line_white_space = dimensions().X() - content_dimensions().X();
-	switch (cs->GetParagraphAlignment())
-	{
-	case ICompositionStyle::kTextAlignJustifyFull:
-		justify();
-		line_white_space = 0;
-		break;
-	case ICompositionStyle::kTextAlignJustifyLeft:
-		if (!last_line)
-		{
-			justify();
-			line_white_space = 0;
-		}
-		break;
-	case ICompositionStyle::kTextAlignJustifyCenter:
-		if (!last_line)
-		{
-			justify();
-			line_white_space = 0;
-		}
-		else
-		{
-			line_white_space /= 2;
-			alignment_offset = line_white_space;
-		}
-		break;
-	case ICompositionStyle::kTextAlignJustifyRight:
-		if (!last_line)
-		{
-			justify();
-			line_white_space = 0;
-		}
-		else
-		{
-			alignment_offset = line_white_space;
-			line_white_space = 0;
-		}
-		break;
-	case ICompositionStyle::kTextAlignLeft:
-		break;
-	case ICompositionStyle::kTextAlignCenter:
-		line_white_space /= 2;
-		alignment_offset = line_white_space;
-		break;
-	case ICompositionStyle::kTextAlignRight:
-		alignment_offset = line_white_space;
-		line_white_space = 0;
-		break;
-	case ICompositionStyle::kTextAlignToBinding:
-		switch(get_page_type(helper))
-		{
-		case kLeftPage:		alignment_offset = line_white_space; line_white_space = 0; break;
-		case kUnisexPage:	break;
-		case kRightPage:	break;
-		}
-		break;
-	case ICompositionStyle::kTextAlignAwayBinding:
-		switch(get_page_type(helper))
-		{
-		case kLeftPage:		break;
-		case kUnisexPage:	break;
-		case kRightPage:	alignment_offset = line_white_space; line_white_space = 0; break;
-		}
-		break;
-	default:	
-		break;
-	}
-	last_run.fit_trailing_whitespace(line_white_space);
-
-	return alignment_offset;
-}
-
-
-run * tile::create_run(gr_face_cache &faces, IDrawingStyle * ds, TextIterator & ti, TextIndex span)
-{
-	InterfacePtr<IPMFont>			font = ds->QueryFont();
-
-	if (ti.IsNull() || font == nil)
-		return nil;
-
-	run * r = nil;
-
-	switch((*ti).GetValue())
-	{
-	case kTextChar_ObjectReplacementCharacter:
-		r = new inline_object(ds);
-		if (!r)	return nil;
-
-		r->fill(ti, span);
-		break;
-
-	default:
-		switch(font->GetFontType())
-		{
-		case IPMFont::kOpenTypeTTFontType:
-		case IPMFont::kTrueTypeFontType:
-		{
-			gr_face * const face = faces[font];
-			if (face)
-			{
-				r = new graphite_run(face, ds);
-				if (r && r->fill(ti, span)) break;
-				delete r;
-			}
-		}
-		default:
-			r = new fallback_run(ds);
-			if (r)	r->fill(ti, span);
-			break;
-		}
-		break;
-	}
-
-	if (!r || r->span() == 0)
-	{
-		delete r;
-		return nil;
-	}
-
-	return r;
-}
-
-
-void tile::update_line_metrics(line_metrics & lm) const
-{
-	for (const_iterator r = begin(), r_e = end(); r != r_e; ++r)
-		lm += (*r)->get_style();
-}
-
-
-struct line_t : public std::vector<tile*>
-{
-	~line_t() throw() { clear(); }
-	void clear() throw() { for (iterator i = begin(); i != end(); ++i) delete *i; std::vector<tile*>::clear(); }
-};
 
 
 IWaxLine * nrsc::compose_line(tiler & tile_manager, gr_face_cache & faces, IParagraphComposer::RecomposeHelper & helper, const TextIndex ti)
 {
 	IComposeScanner	* scanner = helper.GetComposeScanner();
-	IDrawingStyle	* ds = scanner->GetCompleteStyleAt(ti);
-	InterfacePtr<ICompositionStyle>		cs(ds, UseDefaultIID());
-	const bool	first_line = ti == helper.GetParagraphStart();
-	line_t			line;
-	line_metrics	lm(ds);
-	size_t			line_span;
+	line_metrics	lm(scanner->GetCompleteStyleAt(ti));
+	line			ln;
 
 	do
 	{
-		line.clear();
+		if (tile_manager.drop_lines() > 1)
+		{
+			line_metrics dclm = lm;
+			dclm *= tile_manager.drop_lines();
 
-		// Get tiles for this line
-		if (!tile_manager.next_line(ti, lm, ds))
+			// Get tiles for the drop caps line at double height.
+			if (!tile_manager.next_line(ti, dclm))
+				break;
+		}
+
+		// Get tiles for the line at normal height.
+		if (!tile_manager.next_line(ti, lm))
 			break;
-		const PMRectCollection & tiles = tile_manager.tiles();
 
 		// Create the first tile and fill with the entire paragraph (this will almost always be overset)
+		PMRectCollection const & tiles = tile_manager.tiles();
 		PMRectCollection::const_iterator t = tiles.begin();
-		line.push_back(new tile(*t));
-		if (!line.front()->fill_by_span(*scanner, faces, ti, helper.GetParagraphEnd()-ti))
+		ln.push_back(new tile(*t));
+		if (!ln.front()->fill_by_span(*scanner, faces, ti, helper.GetParagraphEnd()-ti))
 			return nil;
+
+		if (tile_manager.drop_lines() > 1)
+		{
+			// Break the tile at the requested number of clusters.
+			tile * last = ln.back();
+			last->apply_tab_widths();
+			last->split_into(tile_manager.drop_clusters(), **ln.insert(ln.end(), new tile(*++t)));
+		}
 
 		// Flow text into any remaining tiles, (not the common case)
 		// The complicated looking body below gets the most recently added tile, then 
 		//  inserts the input tile onto the end, passing it into break_into.
 		while (++t != tiles.end())
 		{
-			tile * & last = line.back();
-			last->apply_tab_widths(cs);
-			last->break_into(**line.insert(line.end(), new tile(*t)));
+			tile * last = ln.back();
+			last->apply_tab_widths();
+			last->break_into(**ln.insert(ln.end(), new tile(*t)));
 		}
 		
 		// Collect any overset text for this line into a run off tile so the actual 
 		// tiles are correctly set.
-		line.back()->apply_tab_widths(cs);
+		ln.back()->apply_tab_widths();
 		tile runoff;
-		line.back()->break_into(runoff);
+		ln.back()->break_into(runoff);
 
 		// Check tile depths
-		line_span = 0;
-		for (line_t::iterator i = line.begin(); i != line.end(); ++i)
-		{
-			(*i)->update_line_metrics(lm);
-			line_span += (*i)->span();
-		}
-	} while (tile_manager.need_retry_line(lm) || line_span == 0);
+		ln.update_line_metrics(lm);
+	} while (tile_manager.need_retry_line(lm) || ln.span() == 0);
 
 
 	// TODO: Investigate use of QueryNewWaxline() instead.
@@ -562,23 +135,24 @@ IWaxLine * nrsc::compose_line(tiler & tile_manager, gr_face_cache & faces, IPara
 	if (wl == nil)		return nil;
 
 	// Set the number of tiles on the line and whether to allow shuffling
-	wl->SetNumberOfTiles(line.size());
-	if (line.size() > 1)	wl->SetNoShuffle(kTrue);
+	wl->SetNumberOfTiles(ln.size());
+	if (ln.size() > 1)	wl->SetNoShuffle(kTrue);
 
 	// the x position, width and number
 	// of characters in each tile.
-	for (int i = 0; i != line.size(); ++i)
+	for (int i = 0; i != ln.size(); ++i)
 	{
-		wl->SetTextSpanInTile(line[i]->span(), i); 
-		wl->SetXPosition(line[i]->position().X(), i);
-		wl->SetTargetWidth(line[i]->dimensions().X(), i);
+		wl->SetTextSpanInTile(ln[i]->span(), i); 
+		wl->SetXPosition(ln[i]->position().X(), i);
+		wl->SetTargetWidth(ln[i]->dimensions().X(), i);
 	}
 
 	tile_manager.setup_wax_line(wl, lm);
 
-	helper.ApplyComposedLine(wl, line_span);
+	helper.ApplyComposedLine(wl, ln.span());
 	return wl;
 }
+
 
 bool nrsc::rebuild_line(gr_face_cache & faces, const IParagraphComposer::RebuildHelper & helper)
 {
@@ -593,13 +167,13 @@ bool nrsc::rebuild_line(gr_face_cache & faces, const IParagraphComposer::Rebuild
 
 
 	// Rebuild the and refill tile list from the wax line.
-	line_t	line;
+	line	ln;
 	int tile_span = 0;
 	PMReal alignment_offset = 0;
 	for (int i=0, n_tiles = wl->GetNumberOfTiles(); i != n_tiles; ++i, ti += tile_span)
 	{
 		tile * t;
-		line.push_back(t = new tile(PMRect(wl->GetXPosition(i), y_top, wl->GetXPosition(i) + wl->GetTargetWidth(i), y_bottom)));
+		ln.push_back(t = new tile(PMRect(wl->GetXPosition(i), y_top, wl->GetXPosition(i) + wl->GetTargetWidth(i), y_bottom)));
 		t->fill_by_span(*scanner, faces, ti, wl->GetTextSpanInTile(i));
 
 		tile_span = t->span();
@@ -608,7 +182,7 @@ bool nrsc::rebuild_line(gr_face_cache & faces, const IParagraphComposer::Rebuild
 		alignment_offset = t->align_text(helper, js, cs);
 	}
 
-	if (line.size() == 0)
+	if (ln.size() == 0)
 		return false;
 
 	InterfacePtr<IWaxCollection> wc(wl,UseDefaultIID());
@@ -616,7 +190,7 @@ bool nrsc::rebuild_line(gr_face_cache & faces, const IParagraphComposer::Rebuild
 		wc->SetWaxLine(wl);
 
 	// Create the wax runs
-	for (line_t::iterator t = line.begin(), t_e = line.end(); t != t_e; ++t)
+	for (line::iterator t = ln.begin(), t_e = ln.end(); t != t_e; ++t)
 	{
 		PMReal x = (*t)->position().X() - wl->GetXPosition() + alignment_offset;
 

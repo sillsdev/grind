@@ -25,109 +25,60 @@ THE SOFTWARE.
 #pragma once
 
 // Language headers
-#include <list>
 // Interface headers
 #include <IParagraphComposer.h>
 // Library headers
-#include <PMRect.h>
-#include <PMReal.h>
 // Module header
 
 // Forward declarations
-class PMReal;
 // InDesign interfaces
-class IComposeScanner;
-class ICompositionStyle;
-class IDrawingStyle;
-class IJustificationStyle;
 class IWaxLine;
 // Graphite forward delcarations
 
 namespace nrsc 
 {
 // Project forward declarations
-class	gr_face_cache;
-struct	line_metrics;
-class	run;
-class   tiler;
+class gr_face_cache;
+struct line_metrics;
+class tile;
+class tiler;
 
-class tile : private std::list<run*>
+class line : public std::vector<tile*>
 {
-	typedef std::list<run*>	base_t;
-
-	PMRect	_region;
-
-	// disable the assignment operator.
-	tile(const tile & rhs);
-	tile & operator = (const tile &);
-
-
-	static run    * create_run(gr_face_cache & faces, IDrawingStyle * ds, TextIterator & ti, TextIndex span);
-
+	typedef std::vector<tile*>	base_t;
+	size_t	_span;
 public:
-	tile(const PMRect & region=PMRect());
-	virtual ~tile() throw();
+	line();
 
-	// Member types
-	using base_t::const_iterator;
-	using base_t::iterator;
-	using base_t::difference_type;
-	using base_t::size_type;
+	~line() throw();
+	void clear() throw();
 
-	//Iterators
-	using base_t::begin;
-	using base_t::end;
-
-	// Capacity
-	using base_t::empty;
-	using base_t::size;
-	size_t	span() const;
-
-	// Geometry
-	PMPoint     position() const;
-	PMPoint     content_dimensions() const;
-	PMPoint	    dimensions() const;
-
-	// Element access
-	using base_t::front;
-	using base_t::back;
-
-	// Modifiers
-	using base_t::push_front;
-	using base_t::push_back;
-	void	clear();
-	bool	fill_by_span(IComposeScanner & scanner, gr_face_cache & faces, TextIndex offset, TextIndex span);
-
-	// Operations
-	void	justify();
-	void	apply_tab_widths(ICompositionStyle *);
-	PMReal	align_text(const IParagraphComposer::RebuildHelper & helper, IJustificationStyle * js, ICompositionStyle *);
-	void	break_into(tile &);
-	void	update_line_metrics(line_metrics &) const;
+	void update_line_metrics(line_metrics & lm);
+	size_t	span() const throw();
 };
 
 
+
+IWaxLine *	compose_line(tiler &, gr_face_cache &, IParagraphComposer::RecomposeHelper &, const TextIndex ti);
+bool		rebuild_line(gr_face_cache & faces, const IParagraphComposer::RebuildHelper &);
+
+
 inline
-tile::tile(const PMRect & region)
-: _region(region)
+line::line()
+: _span(0)
 {
 }
 
 inline
-PMPoint tile::position() const
-{
-	return _region.LeftTop();
+line::~line() throw() 
+{ 
+	clear(); 
 }
 
 inline
-PMPoint	tile::dimensions() const
+size_t line::span() const throw()
 {
-	return _region.Dimensions();
+	return _span;
 }
-
-
-IWaxLine * compose_line(tiler &, gr_face_cache &, IParagraphComposer::RecomposeHelper &, const TextIndex ti);
-
-bool rebuild_line(gr_face_cache & faces, const IParagraphComposer::RebuildHelper &);
 
 } // end of namespace nrsc
