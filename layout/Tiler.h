@@ -39,6 +39,7 @@ class IDrawingStyle;
 
 namespace nrsc
 {
+class line;
 
 struct line_metrics
 {
@@ -115,9 +116,8 @@ public:
 	tiler(IParagraphComposer::RecomposeHelper & helper);
 	~tiler(void);
 
-	bool	next_line(TextIndex curr_pos, const line_metrics & line);
+	bool	next_line(TextIndex curr_pos, line_metrics const & lm, line & ln);
 
-	const PMRectCollection	& tiles() const;
 	const ParcelKey			& parcel() const;
 
 	bool	need_retry_line(const line_metrics &);
@@ -127,7 +127,8 @@ public:
 	int		drop_clusters() const;
 
 private:
-	bool try_get_tiles(PMReal min_width, const line_metrics & line, TextIndex curr_pos);
+	bool try_get_tiles(PMReal min_width, line_metrics const & lm, TextIndex curr_pos, PMRectCollection &);
+	bool get_line_tiles(PMReal min_width, PMReal indent_left, PMReal indent_right, line_metrics const & lm, TextIndex curr_pos, line & ln);
 	bool get_grid_alignment_metric();
 
 	IParagraphComposer::RecomposeHelper & _helper;
@@ -137,7 +138,6 @@ private:
 	PMReal						_TOP_height;
 	Text::FirstLineOffsetMetric _TOP_height_metric;
 	Text::GridAlignmentMetric	_grid_alignment_metric;
-	PMRectCollection			_tiles;
 	PMReal						_y_offset,
 								_y_offset_original;
 	bool16						_at_TOP;
@@ -147,12 +147,6 @@ private:
 	PMReal						_left_margin;
 	PMReal						_right_margin;
 };
-
-inline
-const PMRectCollection & tiler::tiles() const
-{
-	return _tiles;
-}
 
 inline
 const ParcelKey	& tiler::parcel() const

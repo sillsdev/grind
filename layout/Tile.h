@@ -30,6 +30,7 @@ THE SOFTWARE.
 #include <IParagraphComposer.h>
 // Library headers
 // Module header
+#include "Box.h"
 
 // Forward declarations
 // InDesign interfaces
@@ -53,8 +54,7 @@ class tile : private std::list<run*>
 	PMRect	_region;
 
 	// disable the assignment operator.
-	tile(const tile & rhs);
-	tile & operator = (const tile &);
+	tile &	operator = (const tile &);
 
 	static run    * create_run(gr_face_cache & faces, IDrawingStyle * ds, TextIterator & ti, TextIndex span);
 
@@ -98,7 +98,8 @@ public:
 	void	apply_tab_widths();
 	PMReal	align_text(const IParagraphComposer::RebuildHelper & helper, IJustificationStyle * js, ICompositionStyle *);
 	void	break_into(tile &);
-	void	split_into(size_t n, tile &);
+	void	set_drop_caps(size_t l, size_t n, tile &);
+	void	get_stretch_ratios(glyf::stretch & js) const;
 };
 
 

@@ -29,6 +29,7 @@ THE SOFTWARE.
 #include <IParagraphComposer.h>
 // Library headers
 // Module header
+#include "Tile.h"
 
 // Forward declarations
 // InDesign interfaces
@@ -40,21 +41,41 @@ namespace nrsc
 // Project forward declarations
 class gr_face_cache;
 struct line_metrics;
-class tile;
 class tiler;
 
-class line : public std::vector<tile*>
+class line : public std::list<tile>
 {
-	typedef std::vector<tile*>	base_t;
+	typedef std::list<tile>	base_t;
 	size_t	_span;
 public:
 	line();
-
 	~line() throw();
-	void clear() throw();
+	
+	// Member types
+	using base_t::const_iterator;
+	using base_t::iterator;
+	using base_t::difference_type;
+	using base_t::size_type;
 
-	void update_line_metrics(line_metrics & lm);
+	//Iterators
+	using base_t::begin;
+	using base_t::end;
+
+	// Capacity
+	using base_t::empty;
+	using base_t::size;
 	size_t	span() const throw();
+
+	// Element access
+	using base_t::front;
+	using base_t::back;
+
+	// Modifiers
+	using base_t::push_back;
+
+	// Operations
+	void	update_line_metrics(line_metrics & lm);
+	void	fill_wax_line(IWaxLine &) const;
 };
 
 

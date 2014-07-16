@@ -319,36 +319,6 @@ IWaxRun * run::wax_run() const
 }
 
 
-void run::get_stretch_ratios(glyf::stretch & s) const
-{
-	PMReal min,des,max;
-	InterfacePtr<IJustificationStyle>	js(_drawing_style, UseDefaultIID());
-
-	s[glyf::fill].min = s[glyf::space].min;
-	s[glyf::fill].max = 1000000.0;
-	s[glyf::fill].num = 0;
-
-	js->GetWordspace(&min, &des, &max);
-	s[glyf::space].min = des - min;
-	s[glyf::space].max = max - des;
-	s[glyf::space].num = 0;
-
-	js->GetLetterspace(&min, &des, &max);
-	s[glyf::letter].min = des - min;
-	s[glyf::letter].max = max - des;
-	s[glyf::letter].num = 0;
-
-	js->GetGlyphscale(&min, &des, &max);
-	s[glyf::glyph].min = des - min;
-	s[glyf::glyph].max = max - des;
-	s[glyf::glyph].num = 0;
-
-	s[glyf::fixed].min = 0;
-	s[glyf::fixed].max = 0;
-	s[glyf::fixed].num = 0;
-}
-
-
 void run::calculate_stretch(const glyf::stretch & js, glyf::stretch & s) const
 {
 	const PMReal	space_width = _drawing_style->GetSpaceWidth();

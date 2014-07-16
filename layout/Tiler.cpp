@@ -34,6 +34,7 @@ THE SOFTWARE.
 #include <IWaxLine.h>
 // Library headers
 // Module header
+#include "Line.h"
 #include "Tiler.h"
 
 // Forward declarations
@@ -88,8 +89,8 @@ line_metrics & line_metrics::operator *=(int n)
 }
 
 
-const PMReal tiler::GRID_ALIGNMENT_OFFSET;
 
+const PMReal tiler::GRID_ALIGNMENT_OFFSET = 0;
 
 tiler::tiler(IParagraphComposer::RecomposeHelper & helper)
 : _helper(helper),
@@ -120,56 +121,78 @@ tiler::~tiler(void)
 }
 
 
-bool tiler::next_line(TextIndex curr_pos, const line_metrics & line)
+bool tiler::next_line(TextIndex curr_pos, line_metrics const & lm, line & ln)
 {
 	IComposeScanner	* const scanner = _helper.GetComposeScanner();
 	InterfacePtr<ICompositionStyle> cs(scanner->GetParagraphStyleAt(curr_pos), UseDefaultIID());
 	InterfacePtr<IGridRelatedStyle> grs(cs, UseDefaultIID());
 
+	ln.clear();
+
 	if (cs == nil || grs == nil)	return false;
 
 	const bool first_line = curr_pos == _helper.GetParagraphStart();
-	_height = line.leading;
+	_height = lm.leading;
 	_y_offset_original = _y_offset;
 	_grid_alignment_metric = (grs->GetAlignOnlyFirstLine() == kFalse || first_line) 
 								? grs->GetGridAlignmentMetric() 
 								: Text::kGANone;
 	const PMReal	line_indent_left  = cs->IndentLeftBody()
-									     + (first_line ? cs->IndentLeftFirst() : 0)
-										 + (_tiles.empty() ? 0 : _tiles.back().Right()), 
-					line_indent_right = cs->IndentRightBody(),
-					// The minimum width of a tile must be big enough to fit 
-					// the indents plus one glyph, which we assume to be a 
-					// capital M.
-					min_width = line.em_box_height + line_indent_left + line_indent_right;
+									     + (first_line ? cs->IndentLeftFirst() : 0), 
+					line_indent_right = cs->IndentRightBody();
+
+	if (first_line && _drop_lines > 1)
+	{
+		line_metrics dclm = lm;
+		dclm *= _drop_lines;
+
+		if (!get_line_tiles(lm.em_box_height*_drop_lines*_drop_elems, line_indent_left, line_indent_right, dclm, curr_pos, ln))
+			return false;
+		ln.erase(++ln.begin(), ln.end());
+		_y_offset = _y_offset_original;
+	}
+
+	return get_line_tiles(lm.em_box_height, line_indent_left, line_indent_right, lm, curr_pos, ln);
+}
+
+
+bool tiler::get_line_tiles(PMReal min_width, PMReal indent_left, PMReal indent_right, line_metrics const & lm, TextIndex curr_pos, line & ln)
+{
+	// The minimum width of a tile must be big enough to fit 
+	// the indents plus one glyph, which we assume to be a 
+	// capital M.
+	min_width += indent_left + indent_right;
+	PMRectCollection tiles;
+
 	do
 	{
-		_TOP_height = line[_TOP_height_metric];
+		_TOP_height = lm[_TOP_height_metric];
 	}
-	while (!try_get_tiles(min_width, line, curr_pos));
+	while (!try_get_tiles(min_width, lm, curr_pos, tiles));
 
-	for (PMRectCollection::iterator r = _tiles.begin(); r != _tiles.end(); ++r)
+	if (tiles.empty())
 	{
-		r->Left() = std::max(r->Left(), _left_margin + line_indent_left);
-		r->Right() = std::min(r->Right(), _right_margin - line_indent_right);
-	}
- 
-	if (_tiles.size() == 0)
-	{
-		_y_offset += line.leading;
+		_y_offset += lm.leading;
 		return false;
 	}
 
-	_y_offset = _tiles[0].Bottom();
+	for (PMRectCollection::iterator t = tiles.begin(), t_e = tiles.end(); t != t_e; ++t)
+	{
+		t->Left() = std::max(t->Left(), _left_margin + indent_left);
+		t->Right() = std::min(t->Right(), _right_margin - indent_right);
 
+		ln.push_back(*t);
+	}
+ 
 	return true;
 }
 
-bool tiler::try_get_tiles(PMReal min_width, const line_metrics & line, TextIndex curr_pos)
+
+bool tiler::try_get_tiles(PMReal min_width, line_metrics const & line, TextIndex curr_pos, PMRectCollection & tiles)
 {
 	return _helper.GetTiles(min_width,
 						   line.leading,
-						   _TOP_height*_drop_lines,
+						   line[_TOP_height_metric],
 						   _grid_alignment_metric,	// Grid alignment metric
 						   GRID_ALIGNMENT_OFFSET,	// No offset adjustment 
 						   Text::kRomanLeadingModel,// Leading model
@@ -181,7 +204,7 @@ bool tiler::try_get_tiles(PMReal min_width, const line_metrics & line, TextIndex
 						   &_parcel_key,
 						   &_y_offset, 
 						   &_TOP_height_metric,
-						   _tiles,
+						   tiles,
 						   &_at_TOP,
 						   &_parcel_pos_dependent,
 						   &_left_margin,
@@ -209,10 +232,8 @@ bool  tiler::need_retry_line(const line_metrics &lm)
 {
 	const bool retry = lm.leading > _height || (_at_TOP && lm[_TOP_height_metric] > _TOP_height);
 	if (retry)
-	{
 		_y_offset = _y_offset_original;
-		_tiles.clear();
-	}
+
 	return retry;
 }
 

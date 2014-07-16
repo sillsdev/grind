@@ -200,10 +200,56 @@ PMPoint tile::content_dimensions() const
 }
 
 
+void tile::get_stretch_ratios(glyf::stretch & s) const
+{
+	InterfacePtr<IJustificationStyle>	js(front()->get_style(), UseDefaultIID());
+	InterfacePtr<ICompositionStyle>		cs(front()->get_style(), UseDefaultIID());
+
+	if (js == nil  || cs == nil)
+		return;
+
+	PMReal min,des,max;
+	switch(cs->GetParagraphAlignment())
+	{
+	case ICompositionStyle::kTextAlignJustifyFull:
+	case ICompositionStyle::kTextAlignJustifyLeft:
+	case ICompositionStyle::kTextAlignJustifyCenter:
+	case ICompositionStyle::kTextAlignJustifyRight:
+		js->GetWordspace(&min, &des, &max);
+		s[glyf::space].min = des - min;
+		s[glyf::space].max = max - des;
+		s[glyf::space].num = 0;
+
+		js->GetLetterspace(&min, &des, &max);
+		s[glyf::letter].min = des - min;
+		s[glyf::letter].max = max - des;
+		s[glyf::letter].num = 0;
+
+		js->GetGlyphscale(&min, &des, &max);
+		s[glyf::glyph].min = des - min;
+		s[glyf::glyph].max = max - des;
+		s[glyf::glyph].num = 0;
+
+		s[glyf::fill].min = s[glyf::space].min;
+		s[glyf::fill].max = 1000000.0;
+		s[glyf::fill].num = 0;
+
+		s[glyf::fixed].min = 0;
+		s[glyf::fixed].max = 0;
+		s[glyf::fixed].num = 0;
+		break;
+	default:
+		memset(&s, 0, sizeof(js));
+		break;
+	}
+}
+
+
 void tile::break_into(tile & rest)
 {
 	glyf::stretch js, s = {{0,0},{0,0},{0,0},{0,0},{0,0}};
-	front()->get_stretch_ratios(js);
+	get_stretch_ratios(js);
+	
 
 	PMReal			advance = 0;
 	PMReal const	desired = _region.Width();
@@ -258,7 +304,7 @@ void tile::break_into(tile & rest)
 }
 
 
-void tile::split_into(size_t n, tile & rest)
+void tile::set_drop_caps(size_t l, size_t n, tile & rest)
 {
 	for (iterator r = begin(), r_e = end(); r != r_e; ++r)
 	{
@@ -267,11 +313,16 @@ void tile::split_into(size_t n, tile & rest)
 			if (n == 0)
 			{
 				rest.push_back((*r)->split(cl));
-				rest.splice(rest.end(), *this, ++r, end());
-
-				rest._region.Left() = _region.Right() = _region.Left() + content_dimensions().X();
-				return;
+				break;
 			}
+		}
+		(*r)->scale(l);
+
+		if (n == 0)
+		{
+			rest.splice(rest.end(), *this, ++r, end());
+			rest._region.Left() = _region.Right() = _region.Left() + content_dimensions().X()*l;
+			break;
 		}
 	}
 }
@@ -280,7 +331,7 @@ void tile::split_into(size_t n, tile & rest)
 void tile::justify()
 {
 	glyf::stretch js, s = {{0,0},{0,0},{0,0},{0,0},{0,0}};
-	front()->get_stretch_ratios(js);
+	get_stretch_ratios(js);
 
 	// Calculate the stretch values for all the classes.
 	PMReal  width   = content_dimensions().X();
@@ -301,7 +352,7 @@ void tile::justify()
 	if (stretch < 0)
 	{
 		for (int level = glyf::fill; level != glyf::fixed && stretch != 0; ++level)
-			stretch -= stretches[level] = std::max(s[level].min, stretch);
+			stretch -= stretches[level] = std::max(-s[level].min, stretch);
 	}
 	else
 	{

@@ -118,13 +118,12 @@ public:
 	IWaxRun		  * wax_run() const;
 	IDrawingStyle * get_style() const;
 
-	void get_stretch_ratios(glyf::stretch &) const;
 	void calculate_stretch(const glyf::stretch & js, glyf::stretch & s) const;
 	void apply_desired_widths();
 	void adjust_widths(PMReal fill_space, PMReal word_space, PMReal letter_space, PMReal glyph_scale);
 	void trim_trailing_whitespace(const PMReal letter_space);
 	void fit_trailing_whitespace(const PMReal margin);
-
+	void scale(PMReal n);
 };
 
 
@@ -164,6 +163,12 @@ inline
 run::const_iterator run::trailing_whitespace() const
 {
 	return _trailing_ws;
+}
+
+inline
+void run::scale(PMReal n)
+{
+	adjust_widths(0,0,0,n-1);
 }
 
 } // end of namespace nrsc

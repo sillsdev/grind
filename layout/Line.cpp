@@ -55,21 +55,37 @@ THE SOFTWARE.
 using namespace nrsc;
 
 
-void line::clear()
-{
-	for (iterator t = begin(), t_e = end(); t != t_e; ++t) delete *t;
-	base_t::clear();
-}
-
-
 void line::update_line_metrics(line_metrics & lm)
 {
-	for (iterator t = begin(), t_e = end(); t != t_e; ++t)
+	for (const_iterator t = begin(), t_e = end(); t != t_e; ++t)
 	{
-		for (tile::const_iterator r = (*t)->begin(), r_e = (*t)->end(); r != r_e; ++r)
+		for (tile::const_iterator r = t->begin(), r_e = t->end(); r != r_e; ++r)
+		{
 			lm += (*r)->get_style();
+			_span += (*r)->span();
+		}
 	}
 }
+
+
+void line::fill_wax_line(IWaxLine & wl) const
+{
+	// Set the number of tiles on the line and whether to allow shuffling
+	wl.SetNumberOfTiles(size());
+	if (size() > 1)		wl.SetNoShuffle(kTrue);
+
+	// the x position, width and number
+	// of characters in each tile.
+	int tile_num = 0;
+	for (const_iterator t = begin(), t_e = end(); t != t_e; ++t, ++tile_num)
+	{
+		wl.SetTextSpanInTile(t->span(), tile_num); 
+		wl.SetXPosition(t->position().X(), tile_num);
+		wl.SetTargetWidth(t->dimensions().X(), tile_num);
+	}
+
+}
+
 
 
 IWaxLine * nrsc::compose_line(tiler & tile_manager, gr_face_cache & faces, IParagraphComposer::RecomposeHelper & helper, const TextIndex ti)
@@ -77,76 +93,47 @@ IWaxLine * nrsc::compose_line(tiler & tile_manager, gr_face_cache & faces, IPara
 	IComposeScanner	* scanner = helper.GetComposeScanner();
 	line_metrics	lm(scanner->GetCompleteStyleAt(ti));
 	line			ln;
+	bool const		first_line = helper.GetParagraphStart() == ti;
 
 	do
 	{
-		if (tile_manager.drop_lines() > 1)
-		{
-			line_metrics dclm = lm;
-			dclm *= tile_manager.drop_lines();
-
-			// Get tiles for the drop caps line at double height.
-			if (!tile_manager.next_line(ti, dclm))
-				break;
-		}
-
-		// Get tiles for the line at normal height.
-		if (!tile_manager.next_line(ti, lm))
+		// Get tiles for the line.
+		if (!tile_manager.next_line(ti, lm, ln))
 			break;
 
 		// Create the first tile and fill with the entire paragraph (this will almost always be overset)
-		PMRectCollection const & tiles = tile_manager.tiles();
-		PMRectCollection::const_iterator t = tiles.begin();
-		ln.push_back(new tile(*t));
-		if (!ln.front()->fill_by_span(*scanner, faces, ti, helper.GetParagraphEnd()-ti))
+		line::iterator t = ln.begin();
+		if (!t->fill_by_span(*scanner, faces, ti, helper.GetParagraphEnd()-ti))
 			return nil;
 
-		if (tile_manager.drop_lines() > 1)
+		// Handle drop caps.
+		if (first_line && tile_manager.drop_lines() > 1)
 		{
-			// Break the tile at the requested number of clusters.
-			tile * last = ln.back();
-			last->apply_tab_widths();
-			last->split_into(tile_manager.drop_clusters(), **ln.insert(ln.end(), new tile(*++t)));
+			tile & drop_tile = *t;
+			drop_tile.set_drop_caps(tile_manager.drop_lines(), tile_manager.drop_clusters(), *++t);
 		}
 
 		// Flow text into any remaining tiles, (not the common case)
-		// The complicated looking body below gets the most recently added tile, then 
-		//  inserts the input tile onto the end, passing it into break_into.
-		while (++t != tiles.end())
+		// Push the runoff tile onto the end of the line to collect 
+		//  any overset text.
+		ln.push_back(tile());
+		for (line::iterator t_e = --ln.end(); t != t_e;)
 		{
-			tile * last = ln.back();
-			last->apply_tab_widths();
-			last->break_into(**ln.insert(ln.end(), new tile(*t)));
+			tile & last = *t;
+			last.apply_tab_widths();
+			last.break_into(*++t);
 		}
-		
-		// Collect any overset text for this line into a run off tile so the actual 
-		// tiles are correctly set.
-		ln.back()->apply_tab_widths();
-		tile runoff;
-		ln.back()->break_into(runoff);
+		ln.pop_back();
 
 		// Check tile depths
 		ln.update_line_metrics(lm);
 	} while (tile_manager.need_retry_line(lm) || ln.span() == 0);
 
 
-	// TODO: Investigate use of QueryNewWaxline() instead.
-	IWaxLine* wl = helper.QueryNewWaxLine(); //::CreateObject2<IWaxLine>(kWaxLineBoss);
+	IWaxLine* wl = helper.QueryNewWaxLine();
 	if (wl == nil)		return nil;
 
-	// Set the number of tiles on the line and whether to allow shuffling
-	wl->SetNumberOfTiles(ln.size());
-	if (ln.size() > 1)	wl->SetNoShuffle(kTrue);
-
-	// the x position, width and number
-	// of characters in each tile.
-	for (int i = 0; i != ln.size(); ++i)
-	{
-		wl->SetTextSpanInTile(ln[i]->span(), i); 
-		wl->SetXPosition(ln[i]->position().X(), i);
-		wl->SetTargetWidth(ln[i]->dimensions().X(), i);
-	}
-
+	ln.fill_wax_line(*wl);
 	tile_manager.setup_wax_line(wl, lm);
 
 	helper.ApplyComposedLine(wl, ln.span());
@@ -172,14 +159,14 @@ bool nrsc::rebuild_line(gr_face_cache & faces, const IParagraphComposer::Rebuild
 	PMReal alignment_offset = 0;
 	for (int i=0, n_tiles = wl->GetNumberOfTiles(); i != n_tiles; ++i, ti += tile_span)
 	{
-		tile * t;
-		ln.push_back(t = new tile(PMRect(wl->GetXPosition(i), y_top, wl->GetXPosition(i) + wl->GetTargetWidth(i), y_bottom)));
-		t->fill_by_span(*scanner, faces, ti, wl->GetTextSpanInTile(i));
+		ln.push_back(tile(PMRect(wl->GetXPosition(i), y_top, wl->GetXPosition(i) + wl->GetTargetWidth(i), y_bottom)));
+		tile & t = ln.back();
+		t.fill_by_span(*scanner, faces, ti, wl->GetTextSpanInTile(i));
 
-		tile_span = t->span();
+		tile_span = t.span();
 		if (tile_span != wl->GetTextSpanInTile(i)) return false;
 
-		alignment_offset = t->align_text(helper, js, cs);
+		alignment_offset = t.align_text(helper, js, cs);
 	}
 
 	if (ln.size() == 0)
@@ -192,9 +179,9 @@ bool nrsc::rebuild_line(gr_face_cache & faces, const IParagraphComposer::Rebuild
 	// Create the wax runs
 	for (line::iterator t = ln.begin(), t_e = ln.end(); t != t_e; ++t)
 	{
-		PMReal x = (*t)->position().X() - wl->GetXPosition() + alignment_offset;
+		PMReal x = t->position().X() - wl->GetXPosition() + alignment_offset;
 
-		for (tile::iterator r = (*t)->begin(), r_e = (*t)->end(); r != r_e; ++r)
+		for (tile::iterator r = t->begin(), r_e = t->end(); r != r_e; ++r)
 		{
 			IWaxRun * wr = (*r)->wax_run();
 			if (wr == nil)
