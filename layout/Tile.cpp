@@ -252,14 +252,16 @@ void tile::break_into(tile & rest)
 	glyf::stretch js, s = {{0,0},{0,0},{0,0},{0,0},{0,0}};
 	get_stretch_ratios(js);
 
-	PMReal			advance = 0;
+	PMReal			advance = 0,
+					whitespace_advance = 0;
 	PMReal const	desired = _region.Width();
 
 	break_point	best = *this,
 		        fallback = *this;
 	for (iterator r = begin(), r_e = end(); r != r_e; ++r)
 	{
-		PMReal const	desired_adj = desired + InterfacePtr<IJustificationStyle>((*r)->get_style(), UseDefaultIID())->GetAlteredLetterspace(false),
+		PMReal const	altered_letterspace = InterfacePtr<IJustificationStyle>((*r)->get_style(), UseDefaultIID())->GetAlteredLetterspace(false),
+						desired_adj = desired + altered_letterspace,
 						fallback_stretch = desired_adj/1.2;
 
 		if (InterfacePtr<ICompositionStyle>((*r)->get_style(), UseDefaultIID())->GetNoBreak())
@@ -272,7 +274,14 @@ void tile::break_into(tile & rest)
 		PMReal const	space_width = (*r)->get_style()->GetSpaceWidth();
 		for (run::iterator cl = (*r)->begin(), cl_e = (*r)->end(); cl != cl_e; ++cl)
 		{
-			advance += cl->width();
+			bool const is_whitespace = cl->whitespace();
+			if (is_whitespace)
+				whitespace_advance += cl->width();
+			else
+			{
+				advance += whitespace_advance + cl->width();
+				whitespace_advance = 0;
+			}
 			cl->calculate_stretch(space_width, js, s);
 
 			const PMReal stretch = desired_adj - advance;
