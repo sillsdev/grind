@@ -239,7 +239,7 @@ void tile::get_stretch_ratios(glyf::stretch & s) const
 		s[glyf::fixed].num = 0;
 		break;
 	default:
-		memset(&s, 0, sizeof(js));
+		memset(&s,0,sizeof(s));
 		break;
 	}
 }
