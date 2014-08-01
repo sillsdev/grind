@@ -282,8 +282,11 @@ void tile::break_into(tile & rest)
 						d = demerits(b, cl->break_penalty()),
 						fd = demerits(fb, cl->break_penalty());
 			
+			if (stretch < 0 && best.cluster == front()->begin())
+				best = fallback;
+
 			if (b < 1)	best.improve(r,cl,d);
-			if (fb < 1) fallback.improve(r,cl,fd);
+			if (fb < 1 && stretch > 0) fallback.improve(r,cl,fd);
 		}
 	}
 	
