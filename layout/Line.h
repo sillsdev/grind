@@ -43,7 +43,7 @@ class gr_face_cache;
 struct line_metrics;
 class tiler;
 
-class line : public std::list<tile>
+class line : private std::list<tile>
 {
 	typedef std::list<tile>	base_t;
 	size_t	_span;
@@ -72,6 +72,9 @@ public:
 
 	// Modifiers
 	using base_t::push_back;
+	using base_t::pop_back;
+	using base_t::erase;
+	void clear();
 
 	// Operations
 	void	update_line_metrics(line_metrics & lm);
@@ -100,6 +103,13 @@ inline
 size_t line::span() const throw()
 {
 	return _span;
+}
+
+inline
+void line::clear()
+{
+	base_t::clear();
+	_span = 0;
 }
 
 } // end of namespace nrsc
