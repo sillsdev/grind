@@ -94,7 +94,7 @@ public:
 	bool	fill_by_span(IComposeScanner & scanner, gr_face_cache & faces, TextIndex offset, TextIndex span);
 
 	// Operations
-	void	justify();
+	void	justify(bool ragged);
 	void	apply_tab_widths();
 	PMReal	align_text(const IParagraphComposer::RebuildHelper & helper, IJustificationStyle * js, ICompositionStyle *);
 	void	break_into(tile &);

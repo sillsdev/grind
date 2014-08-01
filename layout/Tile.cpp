@@ -341,7 +341,7 @@ void tile::set_drop_caps(size_t l, size_t n, tile & rest)
 }
 
 
-void tile::justify()
+void tile::justify(bool ragged)
 {
 	glyf::stretch js, s = {{0,0},{0,0},{0,0},{0,0},{0,0}};
 	get_stretch_ratios(js);
@@ -369,6 +369,8 @@ void tile::justify()
 	}
 	else
 	{
+		if (ragged) return;
+
 		for (int level = glyf::fill; level != glyf::fixed && stretch != 0; ++level)
 			stretch -= stretches[level] = std::min(s[level].max, stretch);
 
@@ -457,39 +459,24 @@ PMReal tile::align_text(const IParagraphComposer::RebuildHelper & helper, IJusti
 	switch (cs->GetParagraphAlignment())
 	{
 	case ICompositionStyle::kTextAlignJustifyFull:
-		justify();
+		justify(false);
 		line_white_space = 0;
 		break;
 	case ICompositionStyle::kTextAlignJustifyLeft:
+		justify(last_line);
 		if (!last_line)
-		{
-			justify();
 			line_white_space = 0;
-		}
 		break;
 	case ICompositionStyle::kTextAlignJustifyCenter:
-		if (!last_line)
-		{
-			justify();
-			line_white_space = 0;
-		}
-		else
-		{
-			line_white_space /= 2;
-			alignment_offset = line_white_space;
-		}
+		justify(last_line);
+		line_white_space = last_line ? line_white_space / 2 : 0;
+		alignment_offset = line_white_space;
 		break;
 	case ICompositionStyle::kTextAlignJustifyRight:
-		if (!last_line)
-		{
-			justify();
-			line_white_space = 0;
-		}
-		else
-		{
+		justify(last_line);
+		if (last_line)	
 			alignment_offset = line_white_space;
-			line_white_space = 0;
-		}
+		line_white_space = 0;
 		break;
 	case ICompositionStyle::kTextAlignLeft:
 		break;
