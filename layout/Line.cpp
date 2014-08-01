@@ -117,7 +117,7 @@ IWaxLine * nrsc::compose_line(tiler & tile_manager, gr_face_cache & faces, IPara
 		// Push the runoff tile onto the end of the line to collect 
 		//  any overset text.
 		ln.push_back(tile());
-		for (line::iterator t_e = --ln.end(); t != t_e;)
+		for (line::iterator t_e = --ln.end(); t != t_e && !t->empty();)
 		{
 			tile & last = *t;
 			last.apply_tab_widths();

@@ -247,9 +247,10 @@ void tile::get_stretch_ratios(glyf::stretch & s) const
 
 void tile::break_into(tile & rest)
 {
+	if (empty()) return;
+
 	glyf::stretch js, s = {{0,0},{0,0},{0,0},{0,0},{0,0}};
 	get_stretch_ratios(js);
-	
 
 	PMReal			advance = 0;
 	PMReal const	desired = _region.Width();
@@ -382,6 +383,8 @@ void tile::justify()
 
 void tile::apply_tab_widths()
 {
+	if (empty()) return;
+
 	PMReal	pos = position().X(),
 			max_pos = pos + dimensions().X();
 	PMReal	width = 0,
