@@ -262,7 +262,7 @@ void tile::break_into(tile & rest)
 	{
 		PMReal const	altered_letterspace = InterfacePtr<IJustificationStyle>((*r)->get_style(), UseDefaultIID())->GetAlteredLetterspace(false),
 						desired_adj = desired + altered_letterspace,
-						fallback_stretch = desired_adj/1.2;
+						fallback_stretch = desired_adj;///1.2;
 
 		if (InterfacePtr<ICompositionStyle>((*r)->get_style(), UseDefaultIID())->GetNoBreak())
 		{
