@@ -73,7 +73,7 @@ bool fallback_run::layout_span(TextIterator ti, size_t span)
 		const int gid = gp->GetGlyphID();
 		
 		if (u_isspace(*c))
-			add_glue(glyf::space, _drawing_style->GetSpaceWidth(), u_isWhitespace(*c) ? cluster::penalty::word : cluster::penalty::never);
+			add_glue(glyf::space, _drawing_style->GetSpaceWidth(), u_isWhitespace(*c) ? cluster::penalty::whitespace : cluster::penalty::never);
 		else
 		{
 			PMReal glyph_width = font->GetGlyphWidth(gid);
