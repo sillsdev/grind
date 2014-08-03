@@ -148,7 +148,7 @@ bool tiler::next_line(TextIndex curr_pos, line_metrics const & lm, line & ln)
 								? grs->GetGridAlignmentMetric() 
 								: Text::kGANone;
 	const PMReal	line_indent_left  = cs->IndentLeftBody()
-									     + (first_line ? cs->IndentLeftFirst() : 0)
+									     + (first_line || _drop_indent > 0 ? cs->IndentLeftFirst() : 0)
 										 + _drop_indent,
 					line_indent_right = cs->IndentRightBody();
 
