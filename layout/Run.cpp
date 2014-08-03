@@ -50,7 +50,8 @@ const textchar kTextChar_EnQuadSpace = 0x2000;
 
 run::run()
 : _trailing_ws(end()),
-  _extra_scale(0),
+  _glyph_stretch(0),
+  _scale(1.0),
   _drawing_style(nil),
   _height(0),
   _span(0)
@@ -59,7 +60,8 @@ run::run()
 
 run::run(IDrawingStyle * ds)
 : _trailing_ws(end()),
-  _extra_scale(0),
+  _glyph_stretch(0),
+  _scale(1.0),
   _drawing_style(ds),
   _height(ds->GetLeading()),
   _span(0)
@@ -249,9 +251,9 @@ bool run::render_run(IWaxGlyphs & glyphs) const
 		for (cluster::const_iterator g = cl.begin(); g != cl.end(); ++g, ++w, ++xo, ++yo)
 		{
 			*w = 0;
-			*xo = ToFloat(g->pos().X());
-			*yo = ToFloat(g->pos().Y());
-			glyphs.AddGlyph(g->id(), ToFloat(g->advance()));
+			*xo = ToFloat(_scale*g->pos().X());
+			*yo = ToFloat(_scale*g->pos().Y());
+			glyphs.AddGlyph(g->id(), ToFloat(_scale*g->advance()));
 		}
 	}
 
@@ -267,7 +269,7 @@ bool run::render_run(IWaxGlyphs & glyphs) const
 	{
 		const cluster & cl = *cl_i;
 		
-		glyphs.AddMappingWidth(cl.width());
+		glyphs.AddMappingWidth(_scale*cl.width());
 		glyphs.AddMappingRange(i++, gi, cl.size());
 		for (unsigned char n = cl.span()-1; n; --n, ++i)
 		{
@@ -310,7 +312,7 @@ IWaxRun * run::wax_run() const
 	PMPoint pc;
 	glyphs_mat = glyphs->GetAllGlyphsMatrix(&pc);
 	glyphs_mat.SkewTo(_drawing_style->GetSkewAngle());
-	glyphs_mat.Scale(1+_extra_scale, 1.0);
+	glyphs_mat.Scale(_scale*(1+_glyph_stretch), _scale);
 	glyphs->SetAllGlyphsMatrix(glyphs_mat, pc);
 
 	render_run(*glyphs);
@@ -391,7 +393,7 @@ void run::adjust_widths(PMReal fill_space, PMReal word_space, PMReal letter_spac
 		}
 	}
 
-	_extra_scale = glyph_scale;
+	_glyph_stretch = glyph_scale;
 }
 
 

@@ -110,7 +110,8 @@ IWaxLine * nrsc::compose_line(tiler & tile_manager, gr_face_cache & faces, IPara
 		if (first_line && tile_manager.drop_lines() > 1)
 		{
 			tile & drop_tile = *t;
-			drop_tile.set_drop_caps(tile_manager.drop_lines(), tile_manager.drop_clusters(), *++t);
+			PMReal scale = (lm.cap_height+(tile_manager.drop_lines()-1)*lm.leading)/lm.cap_height;
+			drop_tile.break_drop_caps(scale, tile_manager.drop_clusters(), *++t);
 		}
 
 		// Flow text into any remaining tiles, (not the common case)
@@ -133,6 +134,13 @@ IWaxLine * nrsc::compose_line(tiler & tile_manager, gr_face_cache & faces, IPara
 	IWaxLine* wl = helper.QueryNewWaxLine();
 	if (wl == nil)		return nil;
 
+	if (tile_manager.drop_lines() > 1)
+	{
+		PMReal const indent = first_line ? ln.front().dimensions().X() : tile_manager.drop_indent();
+		int32  const n_lines = tile_manager.drop_lines();
+		wl->SetDropCapIndents(1, &indent, &n_lines);
+	}
+
 	ln.fill_wax_line(*wl);
 	tile_manager.setup_wax_line(wl, lm);
 
@@ -147,11 +155,11 @@ bool nrsc::rebuild_line(gr_face_cache & faces, const IParagraphComposer::Rebuild
 	IWaxLine const 	* wl = helper.GetWaxLine();
 	IComposeScanner * scanner = helper.GetComposeScanner();
 	IDrawingStyle   * para_style   = scanner->GetParagraphStyleAt(ti);
-	PMReal const	y_bottom = wl->GetYPosition(),
-					y_top = y_bottom - wl->GetYAdvance();
+	PMReal const	  y_bottom = wl->GetYPosition(),
+					  y_top = y_bottom - wl->GetYAdvance();
 	InterfacePtr<ICompositionStyle>		cs(para_style, UseDefaultIID());
 	InterfacePtr<IJustificationStyle>	js(para_style, UseDefaultIID());
-
+	bool			  has_drop_cap = ti == helper.GetParagraphStart() && wl->GetDropCapIndents() == 1;
 
 	// Rebuild the and refill tile list from the wax line.
 	line	ln;
@@ -176,8 +184,34 @@ bool nrsc::rebuild_line(gr_face_cache & faces, const IParagraphComposer::Rebuild
 	if (wc->GetWaxLine() == nil)
 		wc->SetWaxLine(wl);
 
+	line::iterator t = ln.begin();
+	// Handle drop caps
+	if (has_drop_cap)
+	{
+		int32 drop_lines = 1.0;
+		line_metrics lm(para_style);
+
+		wl->GetDropCapIndents(nil, &drop_lines);
+		PMReal scale = (lm.cap_height+(drop_lines-1)*lm.leading)/lm.cap_height;
+		PMReal x = t->position().X() - wl->GetXPosition() + alignment_offset;
+		
+		for (tile::iterator r = t->begin(), r_e = t->end(); r != r_e; ++r)
+		{
+			(*r)->scale(scale);
+			IWaxRun * wr = (*r)->wax_run();
+			if (wr == nil)
+				return false;
+			wr->SetXPosition(x);
+			wr->SetYPosition(wr->GetYPosition() + (drop_lines-1)*lm.leading);
+			x += (*r)->width();
+			wc->AddRun(wr);
+		}
+
+		++t;
+	}
+
 	// Create the wax runs
-	for (line::iterator t = ln.begin(), t_e = ln.end(); t != t_e; ++t)
+	for (line::iterator t_e = ln.end(); t != t_e; ++t)
 	{
 		PMReal x = t->position().X() - wl->GetXPosition() + alignment_offset;
 

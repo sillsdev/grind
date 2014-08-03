@@ -125,6 +125,7 @@ public:
 
 	int		drop_lines() const;
 	int		drop_clusters() const;
+	PMReal	drop_indent() const;
 
 private:
 	bool try_get_tiles(PMReal min_width, line_metrics const & lm, TextIndex curr_pos, PMRectCollection &);
@@ -142,8 +143,9 @@ private:
 								_y_offset_original;
 	bool16						_at_TOP;
 	bool16						_parcel_pos_dependent;
-	int16						_drop_lines;
+	int32						_drop_lines;
 	int16						_drop_elems;
+	PMReal						_drop_indent;
 	PMReal						_left_margin;
 	PMReal						_right_margin;
 };
@@ -164,6 +166,12 @@ inline
 int	tiler::drop_clusters() const
 {
 	return _drop_elems;
+}
+
+inline
+PMReal	tiler::drop_indent() const
+{
+	return _drop_indent;
 }
 
 }

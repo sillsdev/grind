@@ -98,7 +98,7 @@ public:
 	void	apply_tab_widths();
 	PMReal	align_text(const IParagraphComposer::RebuildHelper & helper, IJustificationStyle * js, ICompositionStyle *);
 	void	break_into(tile &);
-	void	set_drop_caps(size_t l, size_t n, tile &);
+	void	break_drop_caps(PMReal scale, int elems, tile &);
 	void	get_stretch_ratios(glyf::stretch & js) const;
 };
 

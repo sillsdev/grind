@@ -317,24 +317,27 @@ void tile::break_into(tile & rest)
 }
 
 
-void tile::set_drop_caps(size_t l, size_t n, tile & rest)
+void tile::break_drop_caps(PMReal scale, int elems, tile & rest)
 {
 	for (iterator r = begin(), r_e = end(); r != r_e; ++r)
 	{
-		for (run::iterator cl = (*r)->begin(), cl_e = (*r)->end(); cl != cl_e; ++cl, --n)
+		for (run::iterator cl = (*r)->begin(), cl_e = (*r)->end(); cl != cl_e; ++cl, --elems)
 		{
-			if (n == 0)
+			if (elems == 0)
 			{
+				// Walk forwards adding any trailing whitespace
+				for (; cl != cl_e && cl->whitespace(); ++cl);
+
 				rest.push_back((*r)->split(cl));
+				back()->trim_trailing_whitespace(InterfacePtr<IJustificationStyle>(back()->get_style(), UseDefaultIID())->GetAlteredLetterspace(false));
 				break;
 			}
 		}
-		(*r)->scale(l);
 
-		if (n == 0)
+		if (elems == 0)
 		{
 			rest.splice(rest.end(), *this, ++r, end());
-			rest._region.Left() = _region.Right() = _region.Left() + content_dimensions().X()*l;
+			rest._region.Left() = _region.Right() = _region.Left() + content_dimensions().X()*scale;
 			break;
 		}
 	}

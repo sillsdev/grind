@@ -57,7 +57,8 @@ class run : protected std::list<cluster>
 	size_t num_glyphs() const;
 
 	base_t::iterator	_trailing_ws;
-	PMReal				_extra_scale;
+	PMReal				_glyph_stretch,
+						_scale;
 
 protected:
 	run();
@@ -168,7 +169,7 @@ run::const_iterator run::trailing_whitespace() const
 inline
 void run::scale(PMReal n)
 {
-	adjust_widths(0,0,0,n-1);
+	_scale = n;
 }
 
 } // end of namespace nrsc

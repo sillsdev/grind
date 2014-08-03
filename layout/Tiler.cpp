@@ -104,15 +104,18 @@ tiler::tiler(IParagraphComposer::RecomposeHelper & helper)
   _y_offset(helper.GetStartingYPosition()),
   _at_TOP(kFalse),
   _parcel_pos_dependent(kFalse),
-  _drop_lines(1),
-  _drop_elems(1),
+  _drop_lines(0),
+  _drop_elems(0),
+  _drop_indent(0),
   _left_margin(0.0),
   _right_margin(0.0)
 {
 	IComposeScanner	* const scanner = _helper.GetComposeScanner();
 	InterfacePtr<ICompositionStyle> cs(scanner->GetParagraphStyleAt(_helper.GetStartingTextIndex()), UseDefaultIID());
 	
-	cs->GetDropCapInfo(&_drop_elems, &_drop_lines);
+	int16 drop_lines = 0;
+	cs->GetDropCapInfo(&_drop_elems, &drop_lines);
+	_drop_lines = drop_lines;
 }
 
 
@@ -124,12 +127,19 @@ tiler::~tiler(void)
 bool tiler::next_line(TextIndex curr_pos, line_metrics const & lm, line & ln)
 {
 	IComposeScanner	* const scanner = _helper.GetComposeScanner();
+	IWaxLine const * 		pwl = _helper.GetPreviousWaxLine();
 	InterfacePtr<ICompositionStyle> cs(scanner->GetParagraphStyleAt(curr_pos), UseDefaultIID());
 	InterfacePtr<IGridRelatedStyle> grs(cs, UseDefaultIID());
 
 	ln.clear();
 
 	if (cs == nil || grs == nil)	return false;
+
+	if (pwl && pwl->GetNextLineAffectedByDropcap())
+	{
+		pwl->GetDropCapIndents(&_drop_indent, &_drop_lines);
+		--_drop_lines;
+	}
 
 	const bool first_line = curr_pos == _helper.GetParagraphStart();
 	_height = lm.leading;
@@ -138,7 +148,8 @@ bool tiler::next_line(TextIndex curr_pos, line_metrics const & lm, line & ln)
 								? grs->GetGridAlignmentMetric() 
 								: Text::kGANone;
 	const PMReal	line_indent_left  = cs->IndentLeftBody()
-									     + (first_line ? cs->IndentLeftFirst() : 0), 
+									     + (first_line ? cs->IndentLeftFirst() : 0)
+										 + _drop_indent,
 					line_indent_right = cs->IndentRightBody();
 
 	if (first_line && _drop_lines > 1)
@@ -200,7 +211,7 @@ bool tiler::try_get_tiles(PMReal min_width, line_metrics const & line, TextIndex
 						   0.0,						// Leading model offset
 						   line.leading - line.cap_height,
 						   curr_pos,
-						   kTrue,					//affectedByVerticalJust.
+						   _drop_lines <= 1,		//affectedByVerticalJust.
 						   &_parcel_key,
 						   &_y_offset, 
 						   &_TOP_height_metric,
