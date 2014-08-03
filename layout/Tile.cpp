@@ -329,7 +329,7 @@ void tile::break_drop_caps(PMReal scale, int elems, tile & rest)
 				for (; cl != cl_e && cl->whitespace(); ++cl);
 
 				rest.push_back((*r)->split(cl));
-				back()->trim_trailing_whitespace(InterfacePtr<IJustificationStyle>(back()->get_style(), UseDefaultIID())->GetAlteredLetterspace(false));
+				(*r)->trim_trailing_whitespace(InterfacePtr<IJustificationStyle>(back()->get_style(), UseDefaultIID())->GetAlteredLetterspace(false));
 				break;
 			}
 		}

@@ -422,6 +422,7 @@ run * run::split(run::const_iterator position)
 		new_run->_span += i->span();
 	_span -= new_run->_span;
 
+	_trailing_ws = end();
 	return new_run;
 }
 
