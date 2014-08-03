@@ -173,9 +173,10 @@ bool nrsc::rebuild_line(gr_face_cache & faces, const IParagraphComposer::Rebuild
 
 		tile_span = t.span();
 		if (tile_span != wl->GetTextSpanInTile(i)) return false;
-
-		alignment_offset = t.align_text(helper, js, cs);
 	}
+
+	for (line::iterator t = has_drop_cap ? ++ln.begin() : ln.begin(), t_e = ln.end(); t != t_e; ++t)
+		alignment_offset = t->align_text(helper, js, cs);
 
 	if (ln.size() == 0)
 		return false;
