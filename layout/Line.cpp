@@ -110,7 +110,7 @@ IWaxLine * nrsc::compose_line(tiler & tile_manager, gr_face_cache & faces, IPara
 		if (first_line && tile_manager.drop_lines() > 1)
 		{
 			tile & drop_tile = *t;
-			PMReal scale = (lm.cap_height+(tile_manager.drop_lines()-1)*lm.leading)/lm.cap_height;
+			PMReal scale = (lm.ascent+(tile_manager.drop_lines()-1)*lm.leading)/lm.ascent;
 			drop_tile.break_drop_caps(scale, tile_manager.drop_clusters(), *++t);
 		}
 
@@ -193,7 +193,7 @@ bool nrsc::rebuild_line(gr_face_cache & faces, const IParagraphComposer::Rebuild
 		line_metrics lm(para_style);
 
 		wl->GetDropCapIndents(nil, &drop_lines);
-		PMReal scale = (lm.cap_height+(drop_lines-1)*lm.leading)/lm.cap_height;
+		PMReal scale = (lm.ascent+(drop_lines-1)*lm.leading)/lm.ascent;
 		PMReal x = t->position().X() - wl->GetXPosition() + alignment_offset;
 		
 		for (tile::iterator r = t->begin(), r_e = t->end(); r != r_e; ++r)
