@@ -186,11 +186,11 @@ bool nrsc::rebuild_line(gr_face_cache & faces, const IParagraphComposer::Rebuild
 		wc->SetWaxLine(wl);
 
 	line::iterator t = ln.begin();
-	// Handle drop caps
+	// Handle drop capse
 	if (has_drop_cap)
 	{
 		int32 drop_lines = 1.0;
-		line_metrics lm(para_style);
+		line_metrics lm(t->front()->get_style());
 
 		wl->GetDropCapIndents(nil, &drop_lines);
 		PMReal scale = (lm.ascent+(drop_lines-1)*lm.leading)/lm.ascent;
