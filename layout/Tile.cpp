@@ -239,7 +239,29 @@ void tile::get_stretch_ratios(glyf::stretch & s) const
 		s[glyf::fixed].num = 0;
 		break;
 	default:
-		memset(&s,0,sizeof(s));
+		js->GetWordspace(&min, &des, &max);
+		s[glyf::space].min = 0;
+		s[glyf::space].max = max - des;
+		s[glyf::space].num = 0;
+
+		js->GetLetterspace(&min, &des, &max);
+		s[glyf::letter].min = 0;
+		s[glyf::letter].max = max - des;
+		s[glyf::letter].num = 0;
+
+		js->GetGlyphscale(&min, &des, &max);
+		s[glyf::glyph].min = 0;
+		s[glyf::glyph].max = max - des;
+		s[glyf::glyph].num = 0;
+
+		s[glyf::fill].min = s[glyf::space].min;
+		s[glyf::fill].max = 1000000.0;
+		s[glyf::fill].num = 0;
+
+		s[glyf::fixed].min = 0;
+		s[glyf::fixed].max = 0;
+		s[glyf::fixed].num = 0;
+//		memset(&s,0,sizeof(s));
 		break;
 	}
 }
@@ -262,7 +284,7 @@ void tile::break_into(tile & rest)
 	{
 		PMReal const	altered_letterspace = InterfacePtr<IJustificationStyle>((*r)->get_style(), UseDefaultIID())->GetAlteredLetterspace(false),
 						desired_adj = desired + altered_letterspace,
-						fallback_stretch = desired_adj;///1.2;
+						fallback_stretch = desired_adj/1.2;
 
 		if (InterfacePtr<ICompositionStyle>((*r)->get_style(), UseDefaultIID())->GetNoBreak())
 		{
