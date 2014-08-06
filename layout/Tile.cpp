@@ -325,10 +325,12 @@ void tile::break_into(tile & rest)
 		best = fallback;
 
 	// Walk forwards adding any trailing whitespace
+	++best.cluster;
 	for (iterator const r_e = end(); best.run != r_e; best.cluster = (*best.run)->begin())
 	{
-		while (best.cluster != (*best.run)->end() && (++best.cluster)->whitespace());
-		if (best.cluster != (*best.run)->end() || ++best.run == r_e) break;
+		run::iterator const cl_e = (*best.run)->end(); 
+		for (; best.cluster != cl_e && best.cluster->whitespace(); ++best.cluster);
+		if (best.cluster != cl_e || ++best.run == r_e) break;
 	}
 
 	if (advance <= desired || best.run == end())	return;
