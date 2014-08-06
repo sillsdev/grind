@@ -56,7 +56,7 @@ namespace
 	inline 
 	float total_stretch(const bool stretch, const glyf::stretch & ts) {
 		return ToFloat(stretch ? ts[glyf::space].max + ts[glyf::letter].max + ts[glyf::glyph].max 
-							   : -(ts[glyf::space].min + ts[glyf::letter].min + ts[glyf::glyph].min));
+							   : ts[glyf::space].min + ts[glyf::letter].min + ts[glyf::glyph].min);
 	}
 
 	inline 
@@ -278,8 +278,7 @@ void tile::break_into(tile & rest)
 					whitespace_advance = 0;
 	PMReal const	desired = _region.Width();
 
-	break_point	best = *this,
-		        fallback = *this;
+	break_point	best = *this;
 	for (iterator r = begin(), r_e = end(); r != r_e; ++r)
 	{
 		PMReal const	altered_letterspace = InterfacePtr<IJustificationStyle>((*r)->get_style(), UseDefaultIID())->GetAlteredLetterspace(false),
@@ -308,22 +307,17 @@ void tile::break_into(tile & rest)
 
 			const PMReal stretch = desired_adj - advance;
 			const float ts = total_stretch(stretch > 0, s),
-						b = badness(stretch/ts),
-						fb = badness(stretch/(stretch > 0 ? fallback_stretch : ts)),
-						d = demerits(b, cl->break_penalty()),
-						fd = demerits(fb, cl->break_penalty());
-			
-			if (stretch < 0 && best.cluster == front()->begin())
-				best = fallback;
-
-			if (b < 1)	best.improve(r,cl,d);
-			if (fb < 1 && stretch > 0) fallback.improve(r,cl,fd);
+						b = std::min(badness(stretch/ts), 1.0f),
+						d = demerits(b, cl->break_penalty());
+			if (b < -1)
+			{
+				r = r_e; --r;
+				break;
+			}
+			best.improve(r,cl,d);
 		}
 	}
 	
-	if (best.cluster == front()->begin())
-		best = fallback;
-
 	// Walk forwards adding any trailing whitespace
 	++best.cluster;
 	for (iterator const r_e = end(); best.run != r_e; best.cluster = (*best.run)->begin())
