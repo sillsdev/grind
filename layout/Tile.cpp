@@ -282,8 +282,7 @@ void tile::break_into(tile & rest)
 	for (iterator r = begin(), r_e = end(); r != r_e; ++r)
 	{
 		PMReal const	altered_letterspace = InterfacePtr<IJustificationStyle>((*r)->get_style(), UseDefaultIID())->GetAlteredLetterspace(false),
-						desired_adj = desired + altered_letterspace,
-						fallback_stretch = desired_adj/1.2;
+						desired_adj = desired + altered_letterspace;
 
 		if (InterfacePtr<ICompositionStyle>((*r)->get_style(), UseDefaultIID())->GetNoBreak())
 		{
@@ -327,7 +326,7 @@ void tile::break_into(tile & rest)
 		if (best.cluster != cl_e || ++best.run == r_e) break;
 	}
 
-	if (advance <= desired || best.run == end())	return;
+	if (best.run == end())	return;
 
 	if (best.cluster != (*best.run)->end())
 		rest.push_back((*best.run)->split(best.cluster));
