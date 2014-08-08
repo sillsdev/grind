@@ -267,7 +267,7 @@ void tile::get_stretch_ratios(glyf::stretch & s) const
 }
 
 
-void tile::break_into(tile & rest)
+void tile::break_into(tile & rest, cluster::penalty::type const max_penalty)
 {
 	if (empty()) return;
 
@@ -317,6 +317,14 @@ void tile::break_into(tile & rest)
 		}
 	}
 	
+	// Check the found clusters penalty against the worst permited if it's 
+	// exceeded we can't break here.
+	if (best.cluster->break_penalty() > max_penalty)
+	{
+		rest.splice(rest.end(), *this, begin(), end());
+		return;
+	}
+
 	// Walk forwards adding any trailing whitespace
 	++best.cluster;
 	for (iterator const r_e = end(); best.run != r_e; best.cluster = (*best.run)->begin())

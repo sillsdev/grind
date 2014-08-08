@@ -97,7 +97,7 @@ public:
 	void	justify(bool ragged);
 	void	apply_tab_widths();
 	PMReal	align_text(const IParagraphComposer::RebuildHelper & helper, IJustificationStyle * js, ICompositionStyle *);
-	void	break_into(tile &);
+	void	break_into(tile & rest, cluster::penalty::type const max_penalty = cluster::penalty::clip);
 	void	break_drop_caps(PMReal scale, int elems, tile &);
 	void	get_stretch_ratios(glyf::stretch & js) const;
 };

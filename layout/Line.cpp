@@ -117,12 +117,15 @@ IWaxLine * nrsc::compose_line(tiler & tile_manager, gr_face_cache & faces, IPara
 		// Flow text into any remaining tiles, (not the common case)
 		// Push the runoff tile onto the end of the line to collect 
 		//  any overset text.
+		cluster::penalty::type const max_penalty = ln.size() > 1 || tile_manager.drop_indent() > 0 
+													? cluster::penalty::intra 
+													: cluster::penalty::letter;
 		ln.push_back(tile());
 		for (line::iterator t_e = --ln.end(); t != t_e && !t->empty();)
 		{
 			tile & last = *t;
 			last.apply_tab_widths();
-			last.break_into(*++t);
+			last.break_into(*++t, max_penalty);
 		}
 		ln.pop_back();
 
