@@ -25,6 +25,7 @@ THE SOFTWARE.
 // Language headers
 // Interface headers
 #include "VCPlugInHeaders.h"
+#include <ICompositionStyle.h>
 #include <IDrawingStyle.h>
 #include <IFontInstance.h>
 // Library headers
@@ -88,6 +89,14 @@ run * graphite_run::clone_empty() const
 }
 
 
+inline
+int bidi(IDrawingStyle * ds)
+{
+	InterfacePtr<ICompositionStyle>		cs(ds, UseDefaultIID());
+	return (cs->GetParagraphDirection() ==  ICompositionStyle::kParagraphDirRTL ? gr_rtl : 0) + gr_nomirror;
+}
+
+
 bool graphite_run::layout_span(TextIterator ti, size_t span)
 {
 	if (span ==0)
@@ -100,9 +109,10 @@ bool graphite_run::layout_span(TextIterator ti, size_t span)
 
 	// Make a segment
 	WideString	chars;
+	
 	ti.AppendToStringAndIncrement(&chars, span);
 
-	gr_segment * const seg = gr_make_seg(grfont, _face, 0, nil, gr_utf16, chars.GrabUTF16Buffer(0), span, gr_nobidi + gr_nomirror);
+	gr_segment * const seg = gr_make_seg(grfont, _face, 0, nil, gr_utf16, chars.GrabUTF16Buffer(0), span, bidi(_drawing_style));
 	if (seg == nil)
 	{
 		gr_font_destroy(grfont);
