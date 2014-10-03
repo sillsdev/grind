@@ -436,22 +436,19 @@ void run::trim_trailing_whitespace(const PMReal letter_space)
 		for (const reverse_iterator cl_e = rend(); cl != cl_e; ++cl)
 			if (!cl->whitespace()) break;
 
-		if (cl == rend())
-		{
-			_trailing_ws = begin();
-			return;
-		}
-		_trailing_ws = cl.base();
+		_trailing_ws = cl != rend() ? cl.base() : begin() ;
 	}
 
 	// Re-assign any letterspace contributed whitespace in the final
 	// glyph to the adjacent trailing whitespace.
-	if (_trailing_ws != end())
+	if (_trailing_ws != begin())
 	{
 		iterator non_ws = _trailing_ws;
 		--non_ws;
 		non_ws->trim(letter_space);
-		_trailing_ws->front().kern(letter_space);
+
+		if (_trailing_ws != end())
+			_trailing_ws->front().kern(letter_space);
 	}
 }
 
