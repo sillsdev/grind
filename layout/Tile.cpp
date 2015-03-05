@@ -115,7 +115,7 @@ namespace
 			case TabStop::kTabAlignChar:	tab_width -= std::min(std::min(align_width, width), tab_width);	break;
 			}
 			glyf & tg = tab->front();
-			tg.kern(tab_width - tg.width());
+			tg.width() = tab_width;
 		}
 
 		return tab_width;

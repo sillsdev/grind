@@ -44,11 +44,6 @@ const cluster::penalty::type
 	cluster::penalty::clip			= 1,
 	cluster::penalty::never			= 10000.0;
 
-PMReal glyf::advance() const throw() {
-	return std::max(_pos.X() + _width, PMReal(0));
-}
-
-
 void cluster::add_glyf(const glyf &g)
 {
 	push_back(g);
@@ -60,7 +55,7 @@ PMReal cluster::width() const throw()
 	PMReal advance = 0;
 
 	for (cluster::const_iterator g = begin(); g != end(); ++g)
-		advance += g->advance();
+		advance += g->width();
 
 	return advance;
 }
@@ -76,7 +71,7 @@ void cluster::trim(const PMReal alt_ltr_spc)
 			g->shift(alt_ltr_spc);
 			break;
 		case glyf::letter:
-			g->kern(-alt_ltr_spc);
+			g->width() -= alt_ltr_spc;
 			return;
 			break;
 		default:
@@ -108,8 +103,8 @@ void cluster::calculate_stretch(const PMReal & space_width, const glyf::stretch 
 			s[glyf::letter].max += space_width*js[glyf::letter].max;
 			++s[glyf::letter].num;
 		case glyf::glyph:
-			s[glyf::glyph].min += g->advance()*js[glyf::glyph].min;
-			s[glyf::glyph].max += g->advance()*js[glyf::glyph].max;
+			s[glyf::glyph].min += g->width()*js[glyf::glyph].min;
+			s[glyf::glyph].max += g->width()*js[glyf::glyph].max;
 			++s[glyf::glyph].num;
 			break;
 		case glyf::fixed:

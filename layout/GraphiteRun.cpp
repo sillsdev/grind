@@ -115,7 +115,7 @@ bool graphite_run::layout_span(TextIterator ti, size_t span)
 	cluster * cl = open_cluster();
 	unsigned int	cl_before = gr_cinfo_base(gr_seg_cinfo(seg, gr_slot_before(gr_seg_first_slot(seg)))), 
 					cl_after  = gr_cinfo_base(gr_seg_cinfo(seg, gr_slot_after(gr_seg_first_slot(seg))));
-	float predicted_orign = 0.0;
+	float curradv = 0.0;
 	for (const gr_slot * s = gr_seg_first_slot(seg); s != 0; s = gr_slot_next_in_segment(s))
 	{
 		unsigned int before = gr_cinfo_base(gr_seg_cinfo(seg, gr_slot_before(s)));
@@ -131,17 +131,18 @@ bool graphite_run::layout_span(TextIterator ti, size_t span)
 			// Open a fresh one.
 			cl = open_cluster();
 			cl_before = before;
-			predicted_orign = gr_slot_origin_X(s);
 		}
 		cl_after = std::max(after, cl_after);
 
 		// Add the glyph
+		float const shift = gr_slot_origin_X(s) - curradv,
+					adv = std::max(shift + gr_slot_advance_X(s, 0, grfont), 0.0f);
 		cl->add_glyf(glyf(gr_slot_gid(s), 
 						  justification(seg, s), 
-						  gr_slot_advance_X(s, 0, grfont),
-						  PMPoint(gr_slot_origin_X(s)-predicted_orign, gr_slot_origin_Y(s)*y_pos_scale)));
+						  adv,
+						  PMPoint(shift, gr_slot_origin_Y(s)*y_pos_scale)));
 
-		predicted_orign = gr_slot_origin_X(s) + gr_slot_advance_X(s, 0, grfont);
+		curradv += adv;
 	}
 	// Close the last open cluster
 	cl->add_chars(cl_after - cl_before + 1);

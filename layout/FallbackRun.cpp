@@ -82,7 +82,7 @@ bool fallback_run::layout_span(TextIterator ti, size_t span)
 
 		// Set the kerning.
 		glyf & last_glyf = back().back();
-		last_glyf.shift(PMPoint(gp->GetXPosition() - prev_shift, 0));
+		last_glyf.kern(gp->GetXPosition() - prev_shift);
 		prev_shift = gp->GetXPosition();
 	}
 	

@@ -253,7 +253,7 @@ bool run::render_run(IWaxGlyphs & glyphs) const
 			*w = 0;
 			*xo = ToFloat(_scale*g->pos().X());
 			*yo = ToFloat(_scale*g->pos().Y());
-			glyphs.AddGlyph(g->id(), ToFloat(_scale*g->advance()));
+			glyphs.AddGlyph(g->id(), ToFloat(_scale*g->width()));
 		}
 	}
 
@@ -357,25 +357,26 @@ void run::adjust_widths(PMReal fill_space, PMReal word_space, PMReal letter_spac
 	{
 		for (cluster::iterator g = cl->begin(), g_e = cl->end(); g != g_e; ++g)
 		{
-			g->kern(glyph_scale*g->width());
+			g->width() += glyph_scale*g->width();
 			g->shift(glyph_scale*g->pos().X());
 
 			switch (g->justification())
 			{
 			case glyf::fill:
-				g->kern(fill_space);
+				g->width() += fill_space;
 				break;
 			case glyf::space:
-				g->kern(letter_space + word_space);
+				g->width() += letter_space + word_space;
 				break;
 			case glyf::letter:
-				g->kern(letter_space);
+				g->width() += letter_space;
 				break;
 			case glyf::glyph:
 				g->shift(-letter_space);
 				break;
 			case glyf::fixed:
-				if (g->width() > 0) g->kern(letter_space);
+				if (g->width() > 0) 
+					g->width() += letter_space;
 				break;
 			default: 
 				break;
@@ -389,7 +390,7 @@ void run::adjust_widths(PMReal fill_space, PMReal word_space, PMReal letter_spac
 		{
 			if (g->justification() != glyf::fill) continue;
 
-			g->kern(fill_space);
+			g->width() += fill_space;
 		}
 	}
 
@@ -448,7 +449,7 @@ void run::trim_trailing_whitespace(const PMReal letter_space)
 		non_ws->trim(letter_space);
 
 		if (_trailing_ws != end())
-			_trailing_ws->front().kern(letter_space);
+			_trailing_ws->front().width() += letter_space;
 	}
 }
 
@@ -460,6 +461,6 @@ void run::fit_trailing_whitespace(const PMReal margin)
 	// Shrink the trailing whitespace to fit into the margin space
 	const PMReal trailing_ws = margin/ws_count;
 	for (iterator cl = _trailing_ws, cl_e = end(); cl != cl_e; ++cl)
-		cl->front().kern(std::min(trailing_ws - cl->front().width(), PMReal(0)));
+		cl->front().width() = std::min(trailing_ws, cl->front().width());
 }
 
