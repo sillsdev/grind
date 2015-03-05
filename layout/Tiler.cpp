@@ -110,12 +110,6 @@ tiler::tiler(IParagraphComposer::RecomposeHelper & helper)
   _left_margin(0.0),
   _right_margin(0.0)
 {
-	IComposeScanner	* const scanner = _helper.GetComposeScanner();
-	InterfacePtr<ICompositionStyle> cs(scanner->GetParagraphStyleAt(_helper.GetStartingTextIndex()), UseDefaultIID());
-	
-	int16 drop_lines = 0;
-	cs->GetDropCapInfo(&_drop_elems, &drop_lines);
-	_drop_lines = drop_lines;
 }
 
 
@@ -130,18 +124,24 @@ bool tiler::next_line(TextIndex curr_pos, line_metrics const & lm, line & ln)
 	IWaxLine const * 		pwl = _helper.GetPreviousWaxLine();
 	InterfacePtr<ICompositionStyle> cs(scanner->GetParagraphStyleAt(curr_pos), UseDefaultIID());
 	InterfacePtr<IGridRelatedStyle> grs(cs, UseDefaultIID());
+	const bool first_line = curr_pos == _helper.GetParagraphStart();
 
 	ln.clear();
 
 	if (cs == nil || grs == nil)	return false;
 
-	if (pwl && pwl->GetNextLineAffectedByDropcap())
+	if (first_line)
+	{
+		int16 drop_lines = 0;
+		cs->GetDropCapInfo(&_drop_elems, &drop_lines);
+		_drop_lines = drop_lines;
+	}
+	else if (pwl->GetNextLineAffectedByDropcap())
 	{
 		pwl->GetDropCapIndents(&_drop_indent, &_drop_lines);
 		--_drop_lines;
 	}
 
-	const bool first_line = curr_pos == _helper.GetParagraphStart();
 	_height = lm.leading;
 	_y_offset_original = _y_offset;
 	_grid_alignment_metric = (grs->GetAlignOnlyFirstLine() == kFalse || first_line) 

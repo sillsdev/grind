@@ -60,6 +60,7 @@ struct line_metrics
 	line_metrics & operator += (const IDrawingStyle * const);
 //	line_metrics & operator += (const IDrawingStyle &);
 	line_metrics & operator *= (int n);
+	PMReal drop_caps_scale_factor(int drop_lines) const;
 };
 
 inline
@@ -107,7 +108,10 @@ PMReal line_metrics::operator [](int k) const {
 //	return this->operator += (&ds);
 //}
 
-
+inline
+PMReal line_metrics::drop_caps_scale_factor(const int drop_lines) const {
+	return ((drop_lines-1)*leading + cap_height)/cap_height;
+}
 
 class tiler
 {

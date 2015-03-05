@@ -296,7 +296,8 @@ IWaxRun * run::wax_run() const
 	InterfacePtr<IWaxRun> wr(static_cast<IWaxRun*>(::CreateObject(kWaxTextRunBoss, IID_IWAXRUN)));
 	if (wr == nil)	return nil;
 
-	wr->SetYPosition(_drawing_style->GetEffectiveBaseline());
+	PMReal base_line = _drawing_style->GetEffectiveBaseline();
+	wr->SetYPosition(base_line);
 
 	// Fill out the render data for the run from the drawing style.
 	InterfacePtr<IWaxRenderData> rd(wr, UseDefaultIID());
@@ -398,11 +399,11 @@ void run::adjust_widths(PMReal fill_space, PMReal word_space, PMReal letter_spac
 }
 
 
-PMReal run::width() const
+PMReal run::width(const bool tws) const
 {
 	PMReal advance = 0;
 
-	for (const_iterator cl = begin(), cl_e = end(); cl != _trailing_ws; advance += cl->width(), ++cl);
+	for (const_iterator cl = begin(), cl_e = tws ? end() : _trailing_ws; cl != cl_e; advance += cl->width(), ++cl);
 
 	return advance;
 }

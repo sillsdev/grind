@@ -113,7 +113,7 @@ public:
 	bool			joinable(const run & rhs) const;
 	run	&			join(run & rhs);
 	
-	PMReal			width() const;
+	PMReal			width(const bool include_trailing_whitespace=false) const;
 	PMReal			height() const;
 
 	IWaxRun		  * wax_run() const;

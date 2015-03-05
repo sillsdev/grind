@@ -187,12 +187,12 @@ size_t tile::span() const
 }
 
 
-PMPoint tile::content_dimensions() const
+PMPoint tile::content_dimensions(const bool tws) const
 {
 	PMReal w = 0, h = 0;
 	for (const_iterator r = begin(), r_e = end(); r != r_e; ++r)
 	{
-		w += (*r)->width();
+		w += (*r)->width(tws);
 		h = std::max(h,(*r)->height());
 	}
 
@@ -288,6 +288,8 @@ void tile::break_into(tile & rest, cluster::penalty::type const max_penalty)
 		{
 			advance += (*r)->width();
 			(*r)->calculate_stretch(js, s);
+			if ((*r)->back().break_penalty() == cluster::penalty::mandatory)
+				best.improve(r,--(*r)->end(),0.0);
 			continue;
 		}
 		
@@ -344,27 +346,63 @@ void tile::break_into(tile & rest, cluster::penalty::type const max_penalty)
 
 void tile::break_drop_caps(PMReal scale, int elems, tile & rest)
 {
+	iterator r = begin(), r_e = end();
+	run::iterator cl, cl_e;
+
+	// Chomp elems number of clusters.
+	for (; r != r_e; ++r)
+		for (cl = (*r)->begin(), cl_e = (*r)->end(); cl != cl_e; ++cl, --elems)
+			if (elems == 0) goto whitespace;
+
+whitespace:
+	// Walk forwards including any trailing whitespace in the current run 
+	for (;cl != cl_e && cl->whitespace(); ++cl);
+
+	// If we've reached the end of the current run, continue doing this in
+	// subsequent runs until will hit a non-whitespace character.
+	if (cl == cl_e)
+	{
+		(*r)->trim_trailing_whitespace(InterfacePtr<IJustificationStyle>((*r)->get_style(), UseDefaultIID())->GetAlteredLetterspace(false));
+
+		for (++r; r != r_e; ++r)
+		{
+			for (cl = (*r)->begin(), cl_e = (*r)->end(); cl != cl_e; ++cl)
+				if (!cl->whitespace()) goto split;
+	
+			(*r)->trim_trailing_whitespace(0);
+		}
+
+split:
+		if (r == r_e || cl == (*r)->begin())
+			cl = cl_e = (*--r)->end();
+	}
+
+	if (cl != cl_e)
+	{
+		rest.push_back((*r)->split(cl));
+		(*r)->trim_trailing_whitespace(InterfacePtr<IJustificationStyle>((*r)->get_style(), UseDefaultIID())->GetAlteredLetterspace(false));
+	}
+	rest.splice(rest.end(), *this, ++r, end());
+
+	apply_drop_caps_kern();
+	rest._region.Left() = _region.Right() = _region.Left() + content_dimensions(true).X()*scale;
+}
+
+
+void tile::apply_drop_caps_kern()
+{
+	InterfacePtr<IFontInstance> font = front()->get_style()->QueryFontInstance(false);
+	glyf & first_glyph = front()->front().front();
+	first_glyph.kern(-font->GetGlyphBBox(first_glyph.id()).Left());
+
+	// Make any trailing whitespace only as wide as tracking on the run
 	for (iterator r = begin(), r_e = end(); r != r_e; ++r)
 	{
-		for (run::iterator cl = (*r)->begin(), cl_e = (*r)->end(); cl != cl_e; ++cl, --elems)
-		{
-			if (elems == 0)
-			{
-				// Walk forwards adding any trailing whitespace
-				for (; cl != cl_e && cl->whitespace(); ++cl);
+		InterfacePtr<IJustificationStyle> js((*r)->get_style(), UseDefaultIID());
+		PMReal const tracking = js->GetKernAfter();
 
-				rest.push_back((*r)->split(cl));
-				(*r)->trim_trailing_whitespace(InterfacePtr<IJustificationStyle>(back()->get_style(), UseDefaultIID())->GetAlteredLetterspace(false));
-				break;
-			}
-		}
-
-		if (elems == 0)
-		{
-			rest.splice(rest.end(), *this, ++r, end());
-			rest._region.Left() = _region.Right() = _region.Left() + content_dimensions().X()*scale;
-			break;
-		}
+		for (run::iterator tw = (*r)->trailing_whitespace(), tw_e = (*r)->end(); tw != tw_e; ++tw)
+			tw->front().width() = tracking;
 	}
 }
 
@@ -386,7 +424,7 @@ void tile::justify(bool ragged)
 	// Drop the last letter as we don't want add letterspace stretch to the
 	// last character on a line.
 	s[glyf::letter].max -= s[glyf::letter].max/s[glyf::letter].num;
-	s[glyf::letter].min -= s[glyf::letter].min/s[glyf::letter].num;
+	s[glyf::letter].min -= s[glyf::letter].min/s[glyf::letter].num; // TODO: Check this is correct the above holds for stretch but not perhaps shrink
 	--s[glyf::letter].num;
 
 	if (stretch == 0)	return;
@@ -550,6 +588,7 @@ run * tile::create_run(gr_face_cache &faces, IDrawingStyle * ds, TextIterator & 
 
 	run * r = nil;
 
+	IPMFont::FontType ft = font->GetFontType();
 	switch((*ti).GetValue())
 	{
 	case kTextChar_ObjectReplacementCharacter:
@@ -562,8 +601,9 @@ run * tile::create_run(gr_face_cache &faces, IDrawingStyle * ds, TextIterator & 
 	default:
 		switch(font->GetFontType())
 		{
-		case IPMFont::kOpenTypeTTFontType:
 		case IPMFont::kTrueTypeFontType:
+//		case IPMFont::kOpenTypeCFFFontType:
+		case IPMFont::kOpenTypeTTFontType:
 		{
 			gr_face * const face = faces[font];
 			if (face)

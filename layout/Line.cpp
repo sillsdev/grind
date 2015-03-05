@@ -28,12 +28,13 @@ THE SOFTWARE.
 #include <IComposeScanner.h>
 #include <ICompositionStyle.h>
 //#include <IDrawingStyle.h>
-//#include <IFontInstance.h>
+#include <IFontInstance.h>
 //#include <IHierarchy.h>
 #include <IJustificationStyle.h>
 //#include <ILayoutUtils.h>
 //#include <IPMFont.h>
 #include <IWaxCollection.h>
+#include <IWaxGlyphs.h>
 #include <IWaxLine.h>
 #include <IWaxRun.h>
 // Library headers
@@ -95,6 +96,8 @@ IWaxLine * nrsc::compose_line(tiler & tile_manager, gr_face_cache & faces, IPara
 	line			ln;
 	bool const		first_line = helper.GetParagraphStart() == ti;
 
+	//PMString fn = helper.GetDataBase()->GetSysFile()->GetString();
+
 	do
 	{
 		// Get tiles for the line.
@@ -107,17 +110,17 @@ IWaxLine * nrsc::compose_line(tiler & tile_manager, gr_face_cache & faces, IPara
 			return nil;
 
 		// Handle drop caps.
-		if (first_line && tile_manager.drop_lines() > 1)
+		bool drop_caps = first_line && tile_manager.drop_lines() > 1;
+		if (drop_caps)
 		{
 			tile & drop_tile = *t;
-			PMReal scale = (lm.ascent+(tile_manager.drop_lines()-1)*lm.leading)/lm.ascent;
-			drop_tile.break_drop_caps(scale, tile_manager.drop_clusters(), *++t);
+			drop_tile.break_drop_caps(lm.drop_caps_scale_factor(tile_manager.drop_lines()), tile_manager.drop_clusters(), *++t);
 		}
 
 		// Flow text into any remaining tiles, (not the common case)
 		// Push the runoff tile onto the end of the line to collect 
 		//  any overset text.
-		cluster::penalty::type const max_penalty = ln.size() > 1 || tile_manager.drop_indent() > 0 
+		cluster::penalty::type const max_penalty = ln.size() - int(drop_caps) > 1
 													? cluster::penalty::intra 
 													: cluster::penalty::letter;
 		ln.push_back(tile());
@@ -125,7 +128,7 @@ IWaxLine * nrsc::compose_line(tiler & tile_manager, gr_face_cache & faces, IPara
 		{
 			tile & last = *t;
 			last.apply_tab_widths();
-			last.break_into(*++t, max_penalty);
+			last.break_into(*++t);
 		}
 		ln.pop_back();
 
@@ -192,13 +195,14 @@ bool nrsc::rebuild_line(gr_face_cache & faces, const IParagraphComposer::Rebuild
 	// Handle drop capse
 	if (has_drop_cap)
 	{
+		t->apply_drop_caps_kern();
+
 		int32 drop_lines = 1.0;
-		line_metrics lm(t->front()->get_style());
+		line_metrics lm(scanner->GetCompleteStyleAt(ti));
 
 		wl->GetDropCapIndents(nil, &drop_lines);
-		PMReal scale = (lm.ascent+(drop_lines-1)*lm.leading)/lm.ascent;
-		PMReal x = t->position().X() - wl->GetXPosition() + alignment_offset;
-		
+		const PMReal scale = lm.drop_caps_scale_factor(drop_lines);
+		PMReal x = t->position().X() - wl->GetXPosition() + alignment_offset;		
 		for (tile::iterator r = t->begin(), r_e = t->end(); r != r_e; ++r)
 		{
 			(*r)->scale(scale);
@@ -207,7 +211,7 @@ bool nrsc::rebuild_line(gr_face_cache & faces, const IParagraphComposer::Rebuild
 				return false;
 			wr->SetXPosition(x);
 			wr->SetYPosition(wr->GetYPosition() + (drop_lines-1)*lm.leading);
-			x += (*r)->width();
+			x += (*r)->width()*scale;
 			wc->AddRun(wr);
 		}
 

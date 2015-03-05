@@ -80,7 +80,7 @@ public:
 
 	// Geometry
 	PMPoint     position() const;
-	PMPoint     content_dimensions() const;
+	PMPoint     content_dimensions(const bool include_trailing_whitespace=false) const;
 	PMPoint	    dimensions() const;
 
 	// Element access
@@ -99,6 +99,7 @@ public:
 	PMReal	align_text(const IParagraphComposer::RebuildHelper & helper, IJustificationStyle * js, ICompositionStyle *);
 	void	break_into(tile & rest, cluster::penalty::type const max_penalty = cluster::penalty::clip);
 	void	break_drop_caps(PMReal scale, int elems, tile &);
+	void	apply_drop_caps_kern();
 	void	get_stretch_ratios(glyf::stretch & js) const;
 };
 
