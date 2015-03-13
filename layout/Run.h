@@ -53,7 +53,7 @@ class run : protected std::list<cluster>
 	run(const run&);
 	run & operator = (const run &);
 
-	void run::layout_span_with_spacing(TextIterator &, const TextIterator &, PMReal, glyf::justification_t);
+//	void layout_span_with_spacing(TextIterator &, const TextIterator &, PMReal, glyf::justification_t);
 	size_t num_glyphs() const;
 
 	base_t::iterator	_trailing_ws;
@@ -63,7 +63,7 @@ class run : protected std::list<cluster>
 protected:
 	run();
 
-	void	add_glue(glyf::justification_t level, PMReal width, cluster::penalty::type bw=cluster::penalty::whitespace);
+	void	add_glue(glyf::justification_t level, PMReal width, cluster::penalty::type bw=cluster::penalty::whitespace, cluster::type_t t=cluster::space);
 	void	add_letter(int glyph_id, PMReal width, cluster::penalty::type bw=cluster::penalty::letter, bool to_cluster=false);
 
 	run(IDrawingStyle *);
@@ -105,7 +105,7 @@ public:
 
 	// Modifiers
 	using base_t::clear;
-	pointer	open_cluster();
+	pointer	open_cluster(cluster::type_t type=cluster::ink);
 	run * split(const_iterator position);
 
 	// Operations
@@ -148,9 +148,9 @@ IDrawingStyle  * run::get_style() const
 }
 
 inline
-run::pointer run::open_cluster()
+run::pointer run::open_cluster(cluster::type_t type)
 {
-	resize(size()+1);
+	push_back(type);
 	return &back();
 }
 

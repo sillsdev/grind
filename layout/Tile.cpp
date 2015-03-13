@@ -362,14 +362,10 @@ whitespace:
 	// subsequent runs until will hit a non-whitespace character.
 	if (cl == cl_e)
 	{
-		(*r)->trim_trailing_whitespace(InterfacePtr<IJustificationStyle>((*r)->get_style(), UseDefaultIID())->GetAlteredLetterspace(false));
-
 		for (++r; r != r_e; ++r)
 		{
 			for (cl = (*r)->begin(), cl_e = (*r)->end(); cl != cl_e; ++cl)
 				if (!cl->whitespace()) goto split;
-	
-			(*r)->trim_trailing_whitespace(0);
 		}
 
 split:
@@ -378,10 +374,8 @@ split:
 	}
 
 	if (cl != cl_e)
-	{
 		rest.push_back((*r)->split(cl));
-		(*r)->trim_trailing_whitespace(InterfacePtr<IJustificationStyle>((*r)->get_style(), UseDefaultIID())->GetAlteredLetterspace(false));
-	}
+
 	rest.splice(rest.end(), *this, ++r, end());
 
 	apply_drop_caps_kern();
@@ -399,10 +393,11 @@ void tile::apply_drop_caps_kern()
 	for (iterator r = begin(), r_e = end(); r != r_e; ++r)
 	{
 		InterfacePtr<IJustificationStyle> js((*r)->get_style(), UseDefaultIID());
-		PMReal const tracking = js->GetKernAfter();
+		PMReal const alt_letter_space = js->GetAlteredLetterspace(false);
+		(*r)->trim_trailing_whitespace(alt_letter_space);
 
 		for (run::iterator tw = (*r)->trailing_whitespace(), tw_e = (*r)->end(); tw != tw_e; ++tw)
-			tw->front().width() = tracking;
+			tw->front().width() = alt_letter_space;
 	}
 }
 

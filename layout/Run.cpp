@@ -48,6 +48,45 @@ using namespace nrsc;
 
 const textchar kTextChar_EnQuadSpace = 0x2000;
 
+namespace 
+{
+	inline
+	bool special_handling(unsigned int ch)
+	{
+		switch(ch)
+		{
+			case kTextChar_BreakRunInStyle:
+			case kTextChar_CR:
+			case kTextChar_SoftCR:
+			case kTextChar_RightAlignedTab:
+			case kTextChar_Tab:
+			case kTextChar_Table:				
+			case kTextChar_TableContinued:
+			case kTextChar_ObjectReplacementCharacter:	
+			case kTextChar_HardSpace:
+			case kTextChar_FlushSpace:
+			case kTextChar_EnQuadSpace:
+			case kTextChar_EnSpace:
+			case kTextChar_EmSpace:
+			case kTextChar_ThirdSpace:
+			case kTextChar_QuarterSpace:
+			case kTextChar_SixthSpace:
+			case kTextChar_FigureSpace:
+			case kTextChar_PunctuationSpace:
+			case kTextChar_ThinSpace:
+			case kTextChar_HairSpace:
+			case kTextChar_NarrowNoBreakSpace:
+			case kTextChar_ZeroSpaceBreak:
+			case kTextChar_ZeroWidthNonJoiner:
+			case kTextChar_ZeroWidthJoiner:
+			case kTextChar_ZeroSpaceNoBreak:
+				return true;
+			default:
+				return false;
+		}
+	}
+}
+
 run::run()
 : _trailing_ws(end()),
   _glyph_stretch(0),
@@ -97,82 +136,88 @@ bool run::fill(TextIterator & ti, TextIndex span)
 
 	for (; _span != span && !ti.IsNull(); ++ti, ++_span)
 	{
-		switch((*ti).GetValue())
+		if (special_handling((*ti).GetValue()))
 		{
-			case kTextChar_BreakRunInStyle:
-				layout_span_with_spacing(start, ti, 0, glyf::space);
-				++ti; ++_span;
-				return true;
-				break;
-			case kTextChar_CR:
-			case kTextChar_SoftCR:
-				layout_span_with_spacing(start, ti, _drawing_style->GetSpaceWidth(), glyf::space);
-				back().break_penalty() = cluster::penalty::mandatory;
-				++ti; ++_span;
-				return true; 
-				break;
-			case kTextChar_Tab:
-				layout_span_with_spacing(start, ti, _drawing_style->GetSpaceWidth(), glyf::tab); 
-				break;
-			case kTextChar_Table:				
-			case kTextChar_TableContinued:
-			case kTextChar_ObjectReplacementCharacter:	
-				layout_span(start, ti - start);
-				back().break_penalty() = cluster::penalty::whitespace;
-				return true; 
-				break;
-			case kTextChar_HardSpace:
-				layout_span_with_spacing(start, ti, _drawing_style->GetSpaceWidth(), glyf::space);
-				back().break_penalty() = cluster::penalty::never;
-				break;
-			case kTextChar_FlushSpace:
-				layout_span_with_spacing(start, ti, _drawing_style->GetSpaceWidth(), glyf::fill); 
-				break;
-			case kTextChar_EnQuadSpace:
-			case kTextChar_EnSpace:
-				layout_span_with_spacing(start, ti, _drawing_style->GetEnSpaceWidth(false), glyf::fixed);
-				break;
-			case kTextChar_EmSpace:
-				layout_span_with_spacing(start, ti, em_space_width, glyf::fixed);
-				break;
-			case kTextChar_ThirdSpace:
-				layout_span_with_spacing(start, ti, em_space_width/3, glyf::fixed);
-				break;
-			case kTextChar_QuarterSpace:
-				layout_span_with_spacing(start, ti, em_space_width/4, glyf::fixed);
-				break;
-			case kTextChar_SixthSpace:
-				layout_span_with_spacing(start, ti, em_space_width/6, glyf::fixed);
-				break;
-			case kTextChar_FigureSpace:
-				layout_span_with_spacing(start, ti, font->GetGlyphWidth(font->GetGlyphID(kTextChar_Zero)), glyf::fixed);
-				break;
-			case kTextChar_PunctuationSpace:
-				layout_span_with_spacing(start, ti, font->GetGlyphWidth(font->GetGlyphID(kTextChar_Period)), glyf::fixed);
-				break;
-			case kTextChar_ThinSpace:
-				layout_span_with_spacing(start, ti, em_space_width/8, glyf::fixed);
-				break;
-			case kTextChar_HairSpace:
-				layout_span_with_spacing(start, ti, em_space_width/24, glyf::fixed);
-				break;
-			case kTextChar_NarrowNoBreakSpace:
-				layout_span_with_spacing(start, ti, _drawing_style->GetSpaceWidth(), glyf::fixed);
-				back().break_penalty() = cluster::penalty::never;
-				break;
-			case kTextChar_ZeroSpaceBreak:
-				layout_span_with_spacing(start, ti, 0, glyf::fixed);
-				break;
-			case kTextChar_ZeroWidthNonJoiner:
-			case kTextChar_ZeroWidthJoiner:
-				layout_span_with_spacing(start, ti, 0, glyf::glyph);
-				back().break_penalty() = cluster::penalty::never;
-				break;
-			case kTextChar_ZeroSpaceNoBreak:
-				layout_span_with_spacing(start, ti, 0, glyf::fixed);
-				back().break_penalty() = cluster::penalty::never;
-				break;
-			default: break;
+			const size_t l = ti - start;
+			if (l)
+				layout_span(start, l);
+
+			switch((*ti).GetValue())
+			{
+				case kTextChar_BreakRunInStyle:
+					add_glue(glyf::space, 0);
+					++ti; ++_span;
+					return true;
+					break;
+				case kTextChar_CR:
+				case kTextChar_SoftCR:
+					add_glue(glyf::space, _drawing_style->GetSpaceWidth(), cluster::penalty::mandatory, cluster::eol);
+					++ti; ++_span;
+					return true; 
+					break;
+				case kTextChar_RightAlignedTab:
+					add_glue(glyf::fixed, _drawing_style->GetSpaceWidth(), cluster::penalty::whitespace, cluster::flush_right_tab);
+					break;
+				case kTextChar_Tab:
+					add_glue(glyf::fixed, _drawing_style->GetSpaceWidth(), cluster::penalty::whitespace, cluster::tab); 
+					break;
+				case kTextChar_Table:				
+				case kTextChar_TableContinued:
+				case kTextChar_ObjectReplacementCharacter:	
+					back().break_penalty() = cluster::penalty::whitespace;
+					return true; 
+					break;
+				case kTextChar_HardSpace:
+					add_glue(glyf::space, _drawing_style->GetSpaceWidth(), cluster::penalty::never);
+					break;
+				case kTextChar_FlushSpace:
+					add_glue(glyf::fill, _drawing_style->GetSpaceWidth()); 
+					break;
+				case kTextChar_EnQuadSpace:
+				case kTextChar_EnSpace:
+					add_glue(glyf::letter, _drawing_style->GetEnSpaceWidth(false));
+					break;
+				case kTextChar_EmSpace:
+					add_glue(glyf::letter, em_space_width);
+					break;
+				case kTextChar_ThirdSpace:
+					add_glue(glyf::letter, em_space_width/3);
+					break;
+				case kTextChar_QuarterSpace:
+					add_glue(glyf::letter, em_space_width/4);
+					break;
+				case kTextChar_SixthSpace:
+					add_glue(glyf::letter, em_space_width/6);
+					break;
+				case kTextChar_FigureSpace:
+					add_glue(glyf::letter, font->GetGlyphWidth(font->GetGlyphID(kTextChar_Zero)));
+					break;
+				case kTextChar_PunctuationSpace:
+					add_glue(glyf::letter, font->GetGlyphWidth(font->GetGlyphID(kTextChar_Period)));
+					break;
+				case kTextChar_ThinSpace:
+					add_glue(glyf::letter, em_space_width/8);
+					break;
+				case kTextChar_HairSpace:
+					add_glue(glyf::letter, em_space_width/24);
+					break;
+				case kTextChar_NarrowNoBreakSpace:
+					add_glue(glyf::letter, _drawing_style->GetSpaceWidth(), cluster::penalty::never);
+					break;
+				case kTextChar_ZeroSpaceBreak:
+					add_glue(glyf::fixed, 0);
+					break;
+				case kTextChar_ZeroWidthNonJoiner:
+				case kTextChar_ZeroWidthJoiner:
+					add_glue(glyf::glyph, 0, cluster::penalty::never);
+					break;
+				case kTextChar_ZeroSpaceNoBreak:
+					add_glue(glyf::fixed, 0, cluster::penalty::never);
+					break;
+				default: break;
+			}
+			start = ti;
+			++start;
 		}
 	}
 
@@ -183,27 +228,13 @@ bool run::fill(TextIterator & ti, TextIndex span)
 }
 
 
-inline
-void run::layout_span_with_spacing(TextIterator & first, const TextIterator & last, PMReal width, glyf::justification_t level)
+void run::add_glue(glyf::justification_t level, PMReal width, cluster::penalty::type bw, cluster::type_t t)
 {
-	const size_t span = last - first;
-	if (span)
-		layout_span(first, span);
-		
-	add_glue(level, width);
-	first = last;
-	++first;
-}
+	push_back(cluster(t,bw));
+	cluster & cl = back();
 
-
-void run::add_glue(glyf::justification_t level, PMReal width, cluster::penalty::type bw)
-{
-	
-	cluster * cl = open_cluster();
-
-	cl->add_glyf(glyf(_drawing_style->GetSpaceGlyph(), level, width));
-	cl->add_chars();
-	cl->break_penalty() = bw;
+	cl.add_glyf(glyf(_drawing_style->GetSpaceGlyph(), level, width));
+	cl.add_chars();
 }
 
 
@@ -376,8 +407,6 @@ void run::adjust_widths(PMReal fill_space, PMReal word_space, PMReal letter_spac
 				g->shift(-letter_space);
 				break;
 			case glyf::fixed:
-				if (g->width() > 0) 
-					g->width() += letter_space;
 				break;
 			default: 
 				break;

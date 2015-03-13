@@ -147,8 +147,9 @@ class cluster : private std::vector<glyf>
 private:
 	typedef std::vector<glyf>	base_t;
 
-	unsigned char	_span;
+	unsigned char		_span;
 	float				_penalty;
+	unsigned char		_type;
 
 public:
 	// Member types
@@ -162,6 +163,8 @@ public:
 	typedef base_t::const_pointer			const_pointer;
 	typedef base_t::const_reference			const_reference;
 
+	enum type_t	{ ink, space, tab, flush_right_tab, eol };
+
 	struct penalty { 
 		typedef float	type;
 		static const type	mandatory,
@@ -174,7 +177,7 @@ public:
 	};
 
 	// Constructor
-	cluster();
+	cluster(const type_t type=ink, penalty::type p=penalty::clip);
 
 	//Iterators
 	using base_t::begin;
@@ -202,13 +205,15 @@ public:
 	penalty::type	break_penalty() const;
 	penalty::type &	break_penalty();
 	bool			whitespace() const;
+	type_t			type() const;
 	void			calculate_stretch(const PMReal & space_width, const glyf::stretch & js, glyf::stretch & s) const;
 };
 
 inline
-cluster::cluster()
+cluster::cluster(const type_t type, penalty::type p)
 : _span(0),
-  _penalty(cluster::penalty::clip)
+  _penalty(p),
+  _type(type)
 {
 	reserve(1);
 }
@@ -240,17 +245,25 @@ cluster::penalty::type & cluster::break_penalty()
 inline
 bool cluster::whitespace() const
 {
-	if (size() == 1)
-	{
-		switch(front().justification())
-		{
-		case glyf::fill:
-		case glyf::space:
-		case glyf::tab:		return true;
-		case glyf::fixed:	return _penalty == penalty::whitespace;
-		}
-	}
-	return false;
+	return _type != ink;
+	//if (size() == 1)
+	//{
+	//	switch(front().justification())
+	//	{
+	//	case glyf::fill:
+	//	case glyf::space:
+	//	case glyf::tab:		return true;
+	//	case glyf::letter:  
+	//	case glyf::fixed:	return _penalty == penalty::whitespace;
+	//	}
+	//}
+	//return false;
+}
+
+inline
+cluster::type_t cluster::type() const
+{
+	return type_t(_type);
 }
 
 } // end of namespace nrsc
