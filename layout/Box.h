@@ -50,7 +50,7 @@ character kerning concept.
 class glyf 
 {
 public:
-	enum justification_t		{fill, space, letter, glyph, fixed, tab};
+	enum justification_t		{fill, space, letter, glyph, fixed };
 	typedef struct { PMReal min, max; TextIndex num; }	stretch[5];
 
 private:

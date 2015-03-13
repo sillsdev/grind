@@ -27,7 +27,7 @@ THE SOFTWARE.
 #include "VCPlugInHeaders.h"
 #include <IComposeScanner.h>
 #include <ICompositionStyle.h>
-//#include <IDrawingStyle.h>
+#include <IDrawingStyle.h>
 #include <IFontInstance.h>
 #include <IHierarchy.h>
 #include <IJustificationStyle.h>
@@ -97,7 +97,7 @@ namespace
 	inline
 	bool is_tab(const cluster & cl)
 	{
-		return cl.size() == 1 && cl.front().justification() == glyf::tab;
+		return cl.type() == cluster::tab || cl.type() == cluster::flush_right_tab;
 	}
 
 
@@ -491,7 +491,15 @@ void tile::apply_tab_widths()
 
 			width += process_tab(tab, pos, ts, width, align_width);
 
-			ts = cs->GetTabStopAfter(pos + width);
+			if (cl->type() == cluster::flush_right_tab)
+			{
+				new (&ts) TabStop();
+				ts.SetPosition(max_pos);
+				ts.SetAlignment(TabStop::kTabAlignRight);
+			}
+			else
+				ts = cs->GetTabStopAfter(pos + width);
+
 			tab = cl++;
 			pos += width;
 			width = 0;
