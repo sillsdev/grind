@@ -140,7 +140,7 @@ bool graphite_run::layout_span(TextIterator ti, size_t span)
 		cl->add_glyf(glyf(gr_slot_gid(s), 
 						  justification(seg, s), 
 						  adv,
-						  PMPoint(shift, gr_slot_origin_Y(s)*y_pos_scale)));
+						  PMPoint(shift, -gr_slot_origin_Y(s)*y_pos_scale)));
 
 		curradv += adv;
 	}
