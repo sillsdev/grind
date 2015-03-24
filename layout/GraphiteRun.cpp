@@ -53,6 +53,12 @@ namespace
 		return bw/40.0;
 	}
 
+	inline
+	cluster::type_t type(const gr_segment * const s, unsigned int const b)
+	{
+		return u_isspace(gr_cinfo_unicode_char(gr_seg_cinfo(s, b))) ? cluster::space : cluster::ink;
+	}
+
 	int resolve_penalty(const gr_segment * const s, TextIndex i)
 	{
 		const size_t n_chars = gr_seg_n_cinfo(s);
@@ -108,29 +114,29 @@ bool graphite_run::layout_span(TextIterator ti, size_t span)
 		gr_font_destroy(grfont);
 		return false;
 	}
-
+	chars.clear();
 
 	// Add the glyphs with their natural widths
 	const PMReal y_pos_scale = _drawing_style->GetYScale() / _drawing_style->GetXScale();
-	cluster * cl = open_cluster();
-	unsigned int	cl_before = gr_cinfo_base(gr_seg_cinfo(seg, gr_slot_before(gr_seg_first_slot(seg)))), 
-					cl_after  = gr_cinfo_base(gr_seg_cinfo(seg, gr_slot_after(gr_seg_first_slot(seg))));
+	unsigned int	cl_before = gr_slot_before(gr_seg_first_slot(seg)), 
+					cl_after  = gr_slot_after(gr_seg_first_slot(seg));
 	float curradv = 0.0;
+	cluster * cl = open_cluster(type(seg, cl_before));
 	for (const gr_slot * s = gr_seg_first_slot(seg); s != 0; s = gr_slot_next_in_segment(s))
 	{
-		unsigned int before = gr_cinfo_base(gr_seg_cinfo(seg, gr_slot_before(s)));
-		unsigned int after = gr_cinfo_base(gr_seg_cinfo(seg, gr_slot_after(s)));
+		unsigned int before = gr_slot_before(s);
+		unsigned int after = gr_slot_after(s);
 
 		cl_before = std::min(before, cl_before);
 		if (before > cl_after && gr_slot_can_insert_before(s))
 		{
 			// Finish off this cluster
-			cl->add_chars(cl_after - cl_before + 1);
+			cl->add_chars(cl_after + 1 - cl_before);
 			cl->break_penalty() = penalty(resolve_penalty(seg, cl_after));
 
 			// Open a fresh one.
-			cl = open_cluster();
 			cl_before = before;
+			cl = open_cluster(type(seg, cl_before));
 		}
 		cl_after = std::max(after, cl_after);
 
@@ -145,7 +151,7 @@ bool graphite_run::layout_span(TextIterator ti, size_t span)
 		curradv += adv;
 	}
 	// Close the last open cluster
-	cl->add_chars(cl_after - cl_before + 1);
+	cl->add_chars(cl_after + 1 - cl_before);
 	cl->break_penalty() = penalty(resolve_penalty(seg, cl_after));
 
 	// Tidy up
