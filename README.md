@@ -1,5 +1,6 @@
 Graphite in InDesign (GrInD)
 ============================
+[Installation instructions](https://github.com/sillsdev/grind/wiki/GrInD-plug-in-installation) are in the project Wiki.
 
 This is an in-development InDesign 5.5 plug-in designed allow graphite enabled smart fonts to be used in Adobe InDesign. 
 This project integrates SIL's Graphite 2 smart font technology with our own implementation of a paragraph composer plugin.
